@@ -1,0 +1,4 @@
+torch==1.13.1
+transformers==4.28.1
+torch_geometric==2.3.0
+accelerate==0.18.0
