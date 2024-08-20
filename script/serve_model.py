@@ -160,7 +160,9 @@ class CRSFlaskServer:
         self.crs_model = crs_model
 
         # Load entity data
-        with open(f"../data/{kg_dataset}.json", "r", encoding="utf-8") as f:
+        with open(
+            f"data/{kg_dataset}/entity2id.json", "r", encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
 
         self.id2entity = {int(v): k for k, v in self.entity2id.items()}
@@ -198,7 +200,9 @@ class CRSFlaskServer:
                 conversation_dict = self._process_sender_data(sender_data)
 
                 # Get response
-                response = self.crs_model.get_response(conversation_dict)
+                response = self.crs_model.get_response(
+                    conversation_dict, id2entity=self.id2entity
+                )
                 logger.debug(f"Generated response: {response}")
                 return response, 200
             except ValueError as e:
@@ -231,7 +235,7 @@ class CRSFlaskServer:
         Returns:
             Conversation dictionary.
         """
-        if ["context", "message"] not in sender_data:
+        if any(key not in sender_data for key in ["context", "message"]):
             raise ValueError(
                 "Invalid sender data. Missing context or message."
             )

@@ -50,13 +50,13 @@ class UNICRS:
         self.padding = "max_length"
         self.pad_to_multiple_of = 8
 
-        self.tokenizer_path = f"../src/{tokenizer_path}"
-        self.text_tokenizer_path = f"../src/{text_tokenizer_path}"
+        self.tokenizer_path = tokenizer_path
+        self.text_tokenizer_path = text_tokenizer_path
 
-        self.text_encoder = f"../src/{text_encoder}"
-        self.model_path = f"../src/{model}"
-        self.rec_model_path = f"../src/{rec_model}"
-        self.conv_model_path = f"../src/{conv_model}"
+        self.text_encoder = text_encoder
+        self.model_path = model
+        self.rec_model_path = rec_model
+        self.conv_model_path = conv_model
 
         # config
         gpt2_special_tokens_dict, prompt_special_tokens_dict = (
@@ -91,7 +91,7 @@ class UNICRS:
         self.item_ids = torch.as_tensor(
             self.kg["item_ids"], device=self.device
         )
-        self.kg_dataset_path = f"../data/{self.kg_dataset}"
+        self.kg_dataset_path = f"data/{self.kg_dataset}"
         with open(
             f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
         ) as f:

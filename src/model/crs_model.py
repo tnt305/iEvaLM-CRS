@@ -36,7 +36,7 @@ class CRSModel:
         Returns:
             Generated response.
         """
-        return self.crs_model.get_response(conv_dict)
+        return self.crs_model.get_response(conv_dict, **kwargs)
 
     def get_choice(self, gen_inputs, option, state, conv_dict=None):
         return self.crs_model.get_choice(gen_inputs, option, state, conv_dict)
