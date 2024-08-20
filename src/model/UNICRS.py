@@ -165,7 +165,6 @@ class UNICRS:
                     for ent in conv_dict["entity"][-self.entity_max_length :]
                     if ent in self.entity2id
                 ],
-                "rec": float("inf"),
             }
             self.data_list.append(data_dict)
         else:
@@ -192,7 +191,8 @@ class UNICRS:
             context_dict["input_ids"].append(data["context"])
             prompt_dict["input_ids"].append(data["prompt"])
             entity_list.append(data["entity"])
-            label_list.append(data["rec"])
+            if "rec" in data.keys():
+                label_list.append(data["rec"])
 
         context_dict = self.tokenizer.pad(
             context_dict,
@@ -201,7 +201,8 @@ class UNICRS:
             pad_to_multiple_of=self.pad_to_multiple_of,
         )
 
-        context_dict["rec_labels"] = label_list
+        if len(label_list) > 0:
+            context_dict["rec_labels"] = label_list
 
         for k, v in context_dict.items():
             if not isinstance(v, torch.Tensor):
@@ -251,7 +252,11 @@ class UNICRS:
         logits = outputs.rec_logits[:, self.item_ids]
         ranks = torch.topk(logits, k=50, dim=-1).indices
         preds = self.item_ids[ranks].tolist()
-        labels = input_batch["context"]["rec_labels"].tolist()
+
+        if "rec_labels" in input_batch["context"]:
+            labels = input_batch["context"]["rec_labels"].tolist()
+        else:
+            labels = None
 
         return preds, labels
 
@@ -431,14 +436,12 @@ class UNICRS:
             Generated response.
         """
         recommended_items, _ = self.get_rec(conv_dict)
-        print(f"DEBUG 1: {recommended_items}")
 
         recommended_items_str = ""
         for i, item in enumerate(recommended_items[0][:50]):
             recommended_items_str += f"{i+1}: {item}\n"
 
         _, generated_response = self.get_conv(conv_dict)
-        print(f"DEBUG 2: {generated_response}")
 
         generated_response = generated_response[
             generated_response.rfind("System:") + len("System:") + 1 :

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
@@ -7,13 +7,22 @@ from torch.nn import CrossEntropyLoss
 from torch.nn import functional as F
 from transformers import Conv1D
 from transformers.file_utils import ModelOutput
-from transformers.modeling_outputs import BaseModelOutputWithPastAndCrossAttentions
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPastAndCrossAttentions,
+)
 from transformers.modeling_utils import (
     find_pruneable_heads_and_indices,
     prune_conv1d_layer,
 )
-from transformers.models.gpt2.modeling_gpt2 import GPT2MLP, GPT2PreTrainedModel, logger
-from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
+from transformers.models.gpt2.modeling_gpt2 import (
+    GPT2MLP,
+    GPT2PreTrainedModel,
+    logger,
+)
+from transformers.utils.model_parallel_utils import (
+    assert_device_map,
+    get_device_map,
+)
 
 
 class GPT2Attention(nn.Module):
@@ -91,7 +100,13 @@ class GPT2Attention(nn.Module):
         return tensor.view(new_shape)
 
     def _attn(
-        self, query, key, value, prompt_len=0, attention_mask=None, head_mask=None
+        self,
+        query,
+        key,
+        value,
+        prompt_len=0,
+        attention_mask=None,
+        head_mask=None,
     ):
         attn_weights = torch.matmul(
             query, key.transpose(-1, -2)
@@ -116,7 +131,9 @@ class GPT2Attention(nn.Module):
                 causal_mask = torch.cat([left_mask, causal_mask], dim=-1)
 
             attn_weights = torch.where(
-                causal_mask, attn_weights, self.masked_bias.to(attn_weights.dtype)
+                causal_mask,
+                attn_weights,
+                self.masked_bias.to(attn_weights.dtype),
             )
 
         if attention_mask is not None:
@@ -456,7 +473,10 @@ class GPT2Model(GPT2PreTrainedModel):
                 encoder_sequence_length,
                 _,
             ) = encoder_hidden_states.size()
-            encoder_hidden_shape = (encoder_batch_size, encoder_sequence_length)
+            encoder_hidden_shape = (
+                encoder_batch_size,
+                encoder_sequence_length,
+            )
             if encoder_attention_mask is None:
                 encoder_attention_mask = torch.ones(encoder_hidden_shape, device=device)
             encoder_attention_mask = self.invert_attention_mask(encoder_attention_mask)
@@ -532,9 +552,9 @@ class GPT2Model(GPT2PreTrainedModel):
                 outputs = block(
                     hidden_states,
                     layer_past=layer_past,
-                    prompt_embeds=prompt_embeds[i]
-                    if prompt_embeds is not None
-                    else None,
+                    prompt_embeds=(
+                        prompt_embeds[i] if prompt_embeds is not None else None
+                    ),
                     attention_mask=attention_mask,
                     head_mask=head_mask[i],
                     encoder_hidden_states=encoder_hidden_states,
@@ -742,7 +762,8 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
                 # Flatten the tokens
                 loss_fct = CrossEntropyLoss()
                 loss = loss_fct(
-                    shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+                    shift_logits.view(-1, shift_logits.size(-1)),
+                    shift_labels.view(-1),
                 )
 
         return MultiOutput(
