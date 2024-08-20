@@ -3,3 +3,10 @@ transformers==4.28.1
 torch_geometric==2.3.0
 accelerate==0.18.0
 Flask==3.0.3
+loguru==0.7.2
+nltk==3.9.1
+openai==1.41.1
+tiktoken==0.7.0
+tenacity==9.0.0
+thefuzz==0.22.1
+numpy<2
