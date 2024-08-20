@@ -16,7 +16,7 @@ name2class = {
 }
 
 
-class RECOMMENDER:
+class CRSModel:
     def __init__(self, crs_model, *args, **kwargs) -> None:
         model_class = name2class[crs_model]
         self.crs_model = model_class(*args, **kwargs)
