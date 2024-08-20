@@ -15,7 +15,6 @@ from src.model.barcor.kg_bart import KGForBART
 
 
 class BARCOR:
-
     def __init__(
         self,
         seed,
@@ -41,9 +40,7 @@ class BARCOR:
         self.padding = "max_length"
         self.pad_to_multiple_of = 8
 
-        self.accelerator = Accelerator(
-            device_placement=False, mixed_precision="fp16"
-        )
+        self.accelerator = Accelerator(device_placement=False, mixed_precision="fp16")
         self.device = self.accelerator.device
 
         self.rec_model = f"../src/{rec_model}"
@@ -52,26 +49,21 @@ class BARCOR:
         # conv
         self.resp_max_length = resp_max_length
 
-        self.kg = KGForBART(
-            kg_dataset=self.kg_dataset, debug=self.debug
-        ).get_kg_info()
+        self.kg = KGForBART(kg_dataset=self.kg_dataset, debug=self.debug).get_kg_info()
 
         self.crs_rec_model = BartForSequenceClassification.from_pretrained(
             self.rec_model, num_labels=self.kg["num_entities"]
         ).to(self.device)
-        self.crs_conv_model = AutoModelForSeq2SeqLM.from_pretrained(
-            self.conv_model
-        ).to(self.device)
+        self.crs_conv_model = AutoModelForSeq2SeqLM.from_pretrained(self.conv_model).to(
+            self.device
+        )
         self.crs_conv_model = self.accelerator.prepare(self.crs_conv_model)
 
         self.kg_dataset_path = f"../data/{self.kg_dataset}"
-        with open(
-            f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
-        ) as f:
+        with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
             self.entity2id = json.load(f)
 
     def get_rec(self, conv_dict):
-
         # dataset
         text_list = []
         turn_idx = 0
@@ -141,7 +133,6 @@ class BARCOR:
         return preds, labels
 
     def get_conv(self, conv_dict):
-
         text_list = []
         turn_idx = 0
         for utt in conv_dict["context"]:
@@ -197,9 +188,7 @@ class BARCOR:
 
         for k, v in input_dict.items():
             if not isinstance(v, torch.Tensor):
-                input_dict[k] = torch.as_tensor(
-                    v, device=self.device
-                ).unsqueeze(0)
+                input_dict[k] = torch.as_tensor(v, device=self.device).unsqueeze(0)
 
         self.crs_conv_model.eval()
 
@@ -232,9 +221,7 @@ class BARCOR:
             for op in options
         ]
         option_scores = outputs.scores[-2][0][option_token_ids]
-        state = torch.as_tensor(
-            state, device=self.device, dtype=option_scores.dtype
-        )
+        state = torch.as_tensor(state, device=self.device, dtype=option_scores.dtype)
         option_scores += state
         option_with_max_score = options[torch.argmax(option_scores)]
 

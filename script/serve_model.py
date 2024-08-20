@@ -37,9 +37,7 @@ def parse_args() -> argparse.Namespace:
         choices=["kbrd", "barcor", "unicrs", "chatgpt"],
     )
 
-    parser.add_argument(
-        "--kg_dataset", type=str, choices=["redial", "opendialkg"]
-    )
+    parser.add_argument("--kg_dataset", type=str, choices=["redial", "opendialkg"])
 
     # model_detailed
     parser.add_argument("--hidden_size", type=int)
@@ -76,9 +74,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_model_args(
-    model_name: str, args: argparse.Namespace
-) -> Dict[str, Any]:
+def get_model_args(model_name: str, args: argparse.Namespace) -> Dict[str, Any]:
     """Returns model's arguments from command line arguments.
 
     Args:
@@ -160,9 +156,7 @@ class CRSFlaskServer:
         self.crs_model = crs_model
 
         # Load entity data
-        with open(
-            f"data/{kg_dataset}/entity2id.json", "r", encoding="utf-8"
-        ) as f:
+        with open(f"data/{kg_dataset}/entity2id.json", "r", encoding="utf-8") as f:
             self.entity2id = json.load(f)
 
         self.id2entity = {int(v): k for k, v in self.entity2id.items()}
@@ -213,9 +207,7 @@ class CRSFlaskServer:
                     400,
                 )
 
-    def _process_sender_data(
-        self, sender_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _process_sender_data(self, sender_data: Dict[str, Any]) -> Dict[str, Any]:
         """Processes sender data to create conversation dictionary.
 
         The conversation dictionary contains the following keys: context,
@@ -236,9 +228,7 @@ class CRSFlaskServer:
             Conversation dictionary.
         """
         if any(key not in sender_data for key in ["context", "message"]):
-            raise ValueError(
-                "Invalid sender data. Missing context or message."
-            )
+            raise ValueError("Invalid sender data. Missing context or message.")
 
         context = sender_data["context"] + [sender_data["message"]]
         entities = []

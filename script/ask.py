@@ -251,9 +251,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument(
-        "--kg_dataset", type=str, choices=["redial", "opendialkg"]
-    )
+    parser.add_argument("--kg_dataset", type=str, choices=["redial", "opendialkg"])
 
     # model_detailed
     parser.add_argument("--hidden_size", type=int)
@@ -313,9 +311,7 @@ Only answer the score number."""
     encoding = tiktoken.encoding_for_model("text-davinci-003")
     logit_bias = {encoding.encode(str(score))[0]: 10 for score in range(3)}
 
-    with open(
-        f"../data/{args.kg_dataset}/entity2id.json", "r", encoding="utf-8"
-    ) as f:
+    with open(f"../data/{args.kg_dataset}/entity2id.json", "r", encoding="utf-8") as f:
         entity2id = json.load(f)
     id2entity = {}
     for k, v in entity2id.items():
@@ -324,9 +320,7 @@ Only answer the score number."""
 
     name2id = {}
 
-    with open(
-        f"../data/{args.kg_dataset}/id2info.json", "r", encoding="utf-8"
-    ) as f:
+    with open(f"../data/{args.kg_dataset}/id2info.json", "r", encoding="utf-8") as f:
         id2info = json.load(f)
 
     for k, v in id2info.items():
@@ -344,7 +338,6 @@ Only answer the score number."""
 
     dialog_id_set = set(dialog_id2data.keys()) - get_exist_dialog_set()
     while len(dialog_id_set) > 0:
-
         print(len(dialog_id_set))
         dialog_id = random.choice(tuple(dialog_id_set))
 
@@ -384,9 +377,7 @@ Only answer the score number."""
             # options (list of str): available options, generate one of them
             gen_inputs, recommender_text = recommender.get_conv(conv_dict)
             if args.crs_model != "chatgpt":
-                recommender_choose = recommender.get_choice(
-                    gen_inputs, options, state
-                )
+                recommender_choose = recommender.get_choice(gen_inputs, options, state)
             else:
                 recommender_choose = recommender.get_choice(
                     gen_inputs, options, state, conv_dict
@@ -401,9 +392,7 @@ Only answer the score number."""
                 rec_items_str = ""
                 for j, rec_item in enumerate(rec_pred[:50]):
                     rec_items_str += f"{i + 1}: {id2entity[rec_item]}\n"
-                recommender_text = recommendation_template.format(
-                    rec_items_str
-                )
+                recommender_text = recommendation_template.format(rec_items_str)
 
                 # judge whether success
                 for rec_label in rec_truth:
@@ -450,10 +439,7 @@ Only answer the score number."""
 
                 ans_attr_list = []
                 for label_id in rec_labels:
-                    if (
-                        str(label_id) in id2info
-                        and ask_attr in id2info[str(label_id)]
-                    ):
+                    if str(label_id) in id2info and ask_attr in id2info[str(label_id)]:
                         ans_attr_list.extend(id2info[str(label_id)][ask_attr])
                 if len(ans_attr_list) > 0:
                     seeker_text = ", ".join(list(set(ans_attr_list)))

@@ -41,12 +41,8 @@ class KGForUniCRS:
             if str(entity) not in self.kg:
                 continue
             for relation_and_tail in self.kg[str(entity)]:
-                edge_list.add(
-                    (entity, relation_and_tail[1], relation_and_tail[0])
-                )
-                edge_list.add(
-                    (relation_and_tail[1], entity, relation_and_tail[0])
-                )
+                edge_list.add((entity, relation_and_tail[1], relation_and_tail[0]))
+                edge_list.add((relation_and_tail[1], entity, relation_and_tail[0]))
         edge_list = list(edge_list)
 
         edge = torch.as_tensor(edge_list, dtype=torch.long)

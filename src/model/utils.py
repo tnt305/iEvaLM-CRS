@@ -7,13 +7,12 @@ from rapidfuzz import fuzz, process
 from torch import nn
 from torch.nn import functional as F
 
-special_tokens_dict = {
-    'pad_token': '<|pad|>'
-}
+special_tokens_dict = {"pad_token": "<|pad|>"}
+
 
 def load_jsonl_data(file):
     data_list = []
-    with open(file, encoding='utf-8') as f:
+    with open(file, encoding="utf-8") as f:
         for line in f:
             data = json.loads(line)
             data_list.append(data)
@@ -42,7 +41,7 @@ def padded_tensor(
     items: List[Union[List[int], torch.LongTensor]],
     pad_id: int = 0,
     pad_tail: bool = True,
-    device: torch.device = torch.device('cpu'),
+    device: torch.device = torch.device("cpu"),
     debug: bool = False,
     max_length: Optional[int] = None,
 ) -> torch.Tensor:
@@ -65,7 +64,7 @@ def padded_tensor(
         if pad_tail:
             output[i, :length] = item
         else:
-            output[i, t - length:] = item
+            output[i, t - length :] = item
 
     return output
 
@@ -74,9 +73,7 @@ class SelfAttention(nn.Module):
     def __init__(self, hidden_size):
         super(SelfAttention, self).__init__()
         self.attn = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, 1)
+            nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1)
         )
 
     def forward(self, x, mask=None):
@@ -98,7 +95,9 @@ class SelfAttention(nn.Module):
         return x
 
 
-def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int):
+def shift_tokens_right(
+    input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int
+):
     """
     Shift input ids one token to the right.
     """
@@ -113,6 +112,7 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start
 
     return shifted_input_ids
 
+
 # dbpedia get entity
 # def get_entity(text, SPOTLIGHT_CONFIDENCE):
 #     DBPEDIA_SPOTLIGHT_ADDR = " http://0.0.0.0:2222/rest/annotate"
@@ -126,6 +126,7 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start
 #         if "Resources" in response
 #         else []
 #     )
+
 
 # rapidfuzz get entity
 def get_entity(text, entity_list):

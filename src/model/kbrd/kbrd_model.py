@@ -11,20 +11,26 @@ from transformers import BartPretrainedModel, BartConfig, BartModel
 from transformers.modeling_outputs import Seq2SeqLMOutput
 
 import sys
+
 sys.path.append("..")
 
 from src.model.utils import SelfAttention, shift_tokens_right
+
 
 class KBRDforRec(nn.Module):
     def __init__(self, hidden_size, num_relations, num_bases, num_entities):
         super(KBRDforRec, self).__init__()
         # kg encoder
-        self.kg_encoder = RGCNConv(hidden_size, hidden_size, num_relations=num_relations, num_bases=num_bases)
+        self.kg_encoder = RGCNConv(
+            hidden_size, hidden_size, num_relations=num_relations, num_bases=num_bases
+        )
         self.node_embeds = nn.Parameter(torch.empty(num_entities, hidden_size))
         stdv = math.sqrt(6.0 / (self.node_embeds.size(-2) + self.node_embeds.size(-1)))
         self.node_embeds.data.uniform_(-stdv, stdv)
 
-        self.special_token_embeddings = nn.Parameter(torch.zeros(1, hidden_size), requires_grad=False)
+        self.special_token_embeddings = nn.Parameter(
+            torch.zeros(1, hidden_size), requires_grad=False
+        )
 
         self.attn = SelfAttention(hidden_size)
 
@@ -34,8 +40,15 @@ class KBRDforRec(nn.Module):
         return node_embeds
 
     def forward(
-        self, entity_embeds=None, entity_ids=None, edge_index=None, edge_type=None, node_embeds=None, entity_mask=None,
-        labels=None, reduction='none'
+        self,
+        entity_embeds=None,
+        entity_ids=None,
+        edge_index=None,
+        edge_type=None,
+        node_embeds=None,
+        entity_mask=None,
+        labels=None,
+        reduction="none",
     ):
         if node_embeds is None:
             node_embeds = self.get_node_embeds(edge_index, edge_type)
@@ -50,20 +63,18 @@ class KBRDforRec(nn.Module):
         if labels is not None:
             loss = F.cross_entropy(logits, labels, reduction=reduction)
 
-        return {
-            'loss': loss,
-            'logit': logits,
-            'user_embeds': user_embeds
-        }
+        return {"loss": loss, "logit": logits, "user_embeds": user_embeds}
 
     def save(self, save_dir):
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, 'model.pt')
+        save_path = os.path.join(save_dir, "model.pt")
         torch.save(self.state_dict(), save_path)
 
     def load(self, load_dir):
-        load_path = os.path.join(load_dir, 'model.pt')
-        missing_keys, unexpected_keys = self.load_state_dict(torch.load(load_path, map_location=torch.device('cpu')))
+        load_path = os.path.join(load_dir, "model.pt")
+        missing_keys, unexpected_keys = self.load_state_dict(
+            torch.load(load_path, map_location=torch.device("cpu"))
+        )
 
 
 class KBRDforConv(BartPretrainedModel):
@@ -73,8 +84,12 @@ class KBRDforConv(BartPretrainedModel):
     def __init__(self, config: BartConfig, user_hidden_size):
         super().__init__(config)
         self.model = BartModel(config)
-        self.register_buffer("final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings)))
-        self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
+        self.register_buffer(
+            "final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings))
+        )
+        self.lm_head = nn.Linear(
+            config.d_model, self.model.shared.num_embeddings, bias=False
+        )
 
         self.rec_proj = nn.Linear(user_hidden_size, self.model.shared.num_embeddings)
 
@@ -97,7 +112,10 @@ class KBRDforConv(BartPretrainedModel):
         if new_num_tokens <= old_num_tokens:
             new_bias = self.final_logits_bias[:, :new_num_tokens]
         else:
-            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=self.final_logits_bias.device)
+            extra_bias = torch.zeros(
+                (1, new_num_tokens - old_num_tokens),
+                device=self.final_logits_bias.device,
+            )
             new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
         self.register_buffer("final_logits_bias", new_bias)
 
@@ -125,13 +143,17 @@ class KBRDforConv(BartPretrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-        decoder_user_embeds=None
+        decoder_user_embeds=None,
     ) -> Union[Tuple, Seq2SeqLMOutput]:
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if labels is not None:
             if use_cache:
-                logger.warning("The `use_cache` argument is changed to `False` since `labels` is provided.")
+                logger.warning(
+                    "The `use_cache` argument is changed to `False` since `labels` is provided."
+                )
             use_cache = False
             if decoder_input_ids is None and decoder_inputs_embeds is None:
                 decoder_input_ids = shift_tokens_right(
@@ -155,16 +177,24 @@ class KBRDforConv(BartPretrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias + self.rec_proj(decoder_user_embeds).unsqueeze(1)
+        lm_logits = (
+            self.lm_head(outputs[0])
+            + self.final_logits_bias
+            + self.rec_proj(decoder_user_embeds).unsqueeze(1)
+        )
 
         masked_lm_loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
-            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(
+                lm_logits.view(-1, self.config.vocab_size), labels.view(-1)
+            )
 
         if not return_dict:
             output = (lm_logits,) + outputs[1:]
-            return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+            return (
+                ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+            )
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
@@ -205,11 +235,13 @@ class KBRDforConv(BartPretrainedModel):
             "decoder_head_mask": decoder_head_mask,
             "cross_attn_head_mask": cross_attn_head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
-            "decoder_user_embeds": decoder_user_embeds
+            "decoder_user_embeds": decoder_user_embeds,
         }
 
     def prepare_decoder_input_ids_from_labels(self, labels: torch.Tensor):
-        return shift_tokens_right(labels, self.config.pad_token_id, self.config.decoder_start_token_id)
+        return shift_tokens_right(
+            labels, self.config.pad_token_id, self.config.decoder_start_token_id
+        )
 
     @staticmethod
     def _reorder_cache(past, beam_idx):
@@ -217,6 +249,10 @@ class KBRDforConv(BartPretrainedModel):
         for layer_past in past:
             # cached cross_attention states don't have to be reordered -> they are always the same
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx) for past_state in layer_past[:2]) + layer_past[2:],
+                tuple(
+                    past_state.index_select(0, beam_idx)
+                    for past_state in layer_past[:2]
+                )
+                + layer_past[2:],
             )
         return reordered_past
