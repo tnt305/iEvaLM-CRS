@@ -155,19 +155,33 @@ class UNICRS:
 
         self.data_list = []
 
-        for rec in conv_dict["rec"]:
-            if rec in self.entity2id:
-                data_dict = {
-                    "context": context_ids,
-                    "prompt": prompt_ids,
-                    "entity": [
-                        self.entity2id[ent]
-                        for ent in conv_dict["entity"][-self.entity_max_length :]
-                        if ent in self.entity2id
-                    ],
-                    "rec": self.entity2id[rec],
-                }
-                self.data_list.append(data_dict)
+        if "rec" not in conv_dict.keys() or not conv_dict["rec"]:
+            # Interactive mode: the ground truth is not provided
+            data_dict = {
+                "context": context_ids,
+                "prompt": prompt_ids,
+                "entity": [
+                    self.entity2id[ent]
+                    for ent in conv_dict["entity"][-self.entity_max_length :]
+                    if ent in self.entity2id
+                ],
+                "rec": float("inf"),
+            }
+            self.data_list.append(data_dict)
+        else:
+            for rec in conv_dict["rec"]:
+                if rec in self.entity2id:
+                    data_dict = {
+                        "context": context_ids,
+                        "prompt": prompt_ids,
+                        "entity": [
+                            self.entity2id[ent]
+                            for ent in conv_dict["entity"][-self.entity_max_length :]
+                            if ent in self.entity2id
+                        ],
+                        "rec": self.entity2id[rec],
+                    }
+                    self.data_list.append(data_dict)
 
         context_dict = defaultdict(list)
         prompt_dict = defaultdict(list)
@@ -417,11 +431,14 @@ class UNICRS:
             Generated response.
         """
         recommended_items, _ = self.get_rec(conv_dict)
+        print(f"DEBUG 1: {recommended_items}")
+
         recommended_items_str = ""
         for i, item in enumerate(recommended_items[0][:50]):
             recommended_items_str += f"{i+1}: {item}\n"
 
         _, generated_response = self.get_conv(conv_dict)
+        print(f"DEBUG 2: {generated_response}")
 
         generated_response = generated_response[
             generated_response.rfind("System:") + len("System:") + 1 :
