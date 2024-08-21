@@ -8,6 +8,7 @@ import logging
 import random
 from typing import Any, Dict, Tuple
 
+import openai
 from flask import Flask, request
 
 from src.model.crs_model import CRSModel
@@ -134,24 +135,30 @@ def get_model_args(model_name: str, args: argparse.Namespace) -> Dict[str, Any]:
             "text_encoder": args.text_encoder,
         }
     elif model_name == "chatgpt":
+        openai.api_key = args.api_key
         return {
-            {
-                "seed": args.seed,
-                "debug": args.debug,
-                "kg_dataset": args.kg_dataset,
-            }
+            "seed": args.seed,
+            "debug": args.debug,
+            "kg_dataset": args.kg_dataset,
         }
 
     raise ValueError(f"Model {model_name} is not supported.")
 
 
 class CRSFlaskServer:
-    def __init__(self, crs_model: CRSModel, kg_dataset: str) -> None:
+    def __init__(
+        self,
+        crs_model: CRSModel,
+        kg_dataset: str,
+        response_generation_args: Dict[str, Any] = {},
+    ) -> None:
         """Initializes CRS Flask server.
 
         Args:
             crs_model: CRS model.
             kg_dataset: Name of knowledge graph dataset.
+            response_generation_args: Arguments for response generation.
+              Defaults to None.
         """
         self.crs_model = crs_model
 
@@ -161,6 +168,9 @@ class CRSFlaskServer:
 
         self.id2entity = {int(v): k for k, v in self.entity2id.items()}
         self.entity_list = list(self.entity2id.keys())
+
+        # Response generation arguments
+        self.response_generation_args = response_generation_args
 
         self.app = Flask(__name__)
         self.app.add_url_rule(
@@ -195,7 +205,9 @@ class CRSFlaskServer:
 
                 # Get response
                 response = self.crs_model.get_response(
-                    conversation_dict, id2entity=self.id2entity
+                    conversation_dict,
+                    self.id2entity,
+                    **self.response_generation_args,
                 )
                 logger.debug(f"Generated response: {response}")
                 return response, 200
@@ -260,6 +272,15 @@ if __name__ == "__main__":
     crs_model = CRSModel(crs_model=args.crs_model, **model_args)
     logger.info(f"Loaded {args.crs_model} model.")
 
+    # Generation arguments
+    response_generation_args = {}
+    if args.crs_model == "unicrs":
+        response_generation_args = {
+            "movie_token": (
+                "<movie>" if args.kg_dataset.startswith("redial") else "<mask>"
+            ),
+        }
+
     # Start CRS Flask server
-    crs_server = CRSFlaskServer(crs_model, args.kg_dataset)
+    crs_server = CRSFlaskServer(crs_model, args.kg_dataset, response_generation_args)
     crs_server.start(args.host, args.port)
