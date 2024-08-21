@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 import torch
 from loguru import logger
 
@@ -8,7 +9,7 @@ class KGForBART:
     def __init__(self, kg_dataset, debug=False):
         self.debug = debug
 
-        dataset_dir = f"../data/{kg_dataset}"
+        dataset_dir = f"data/{kg_dataset}"
         with open(os.path.join(dataset_dir, "kg.json"), encoding="utf-8") as f:
             self.kg = json.load(f)
         with open(os.path.join(dataset_dir, "entity2id.json"), encoding="utf-8") as f:

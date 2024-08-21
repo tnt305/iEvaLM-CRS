@@ -32,7 +32,7 @@ class BARCOR:
         self.kg_dataset = kg_dataset
 
         self.debug = debug
-        self.tokenizer_path = f"../src/{tokenizer_path}"
+        self.tokenizer_path = tokenizer_path
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
         self.tokenizer.truncation_side = "left"
         self.context_max_length = context_max_length
@@ -43,8 +43,8 @@ class BARCOR:
         self.accelerator = Accelerator(device_placement=False, mixed_precision="fp16")
         self.device = self.accelerator.device
 
-        self.rec_model = f"../src/{rec_model}"
-        self.conv_model = f"../src/{conv_model}"
+        self.rec_model = rec_model
+        self.conv_model = conv_model
 
         # conv
         self.resp_max_length = resp_max_length
@@ -59,7 +59,7 @@ class BARCOR:
         )
         self.crs_conv_model = self.accelerator.prepare(self.crs_conv_model)
 
-        self.kg_dataset_path = f"../data/{self.kg_dataset}"
+        self.kg_dataset_path = f"data/{self.kg_dataset}"
         with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
             self.entity2id = json.load(f)
 
@@ -86,20 +86,34 @@ class BARCOR:
 
         data_list = []
 
-        for rec in conv_dict["rec"]:
-            if rec in self.entity2id:
-                data_dict = {
-                    "context": context_ids,
-                    "entity": [
-                        self.entity2id[ent]
-                        for ent in conv_dict["entity"]
-                        if ent in self.entity2id
-                    ],
-                    "rec": self.entity2id[rec],
-                }
-                if "template" in conv_dict:
-                    data_dict["template"] = conv_dict["template"]
-                data_list.append(data_dict)
+        if "rec" not in conv_dict.keys() or not conv_dict["rec"]:
+            # Interactive mode: the ground truth is not provided
+            data_dict = {
+                "context": context_ids,
+                "entity": [
+                    self.entity2id[ent]
+                    for ent in conv_dict["entity"]
+                    if ent in self.entity2id
+                ],
+            }
+            if "template" in conv_dict:
+                data_dict["template"] = conv_dict["template"]
+            data_list.append(data_dict)
+        else:
+            for rec in conv_dict["rec"]:
+                if rec in self.entity2id:
+                    data_dict = {
+                        "context": context_ids,
+                        "entity": [
+                            self.entity2id[ent]
+                            for ent in conv_dict["entity"]
+                            if ent in self.entity2id
+                        ],
+                        "rec": self.entity2id[rec],
+                    }
+                    if "template" in conv_dict:
+                        data_dict["template"] = conv_dict["template"]
+                    data_list.append(data_dict)
 
         # dataloader
         input_dict = defaultdict(list)
@@ -107,7 +121,8 @@ class BARCOR:
 
         for data in data_list:
             input_dict["input_ids"].append(data["context"])
-            label_list.append(data["rec"])
+            if "rec" in data.keys():
+                label_list.append(data["rec"])
 
         input_dict = self.tokenizer.pad(
             input_dict,
@@ -116,13 +131,14 @@ class BARCOR:
             pad_to_multiple_of=self.pad_to_multiple_of,
         )
 
-        input_dict["labels"] = label_list
+        if len(label_list) > 0:
+            input_dict["labels"] = label_list
 
         for k, v in input_dict.items():
             if not isinstance(v, torch.Tensor):
                 input_dict[k] = torch.as_tensor(v, device=self.device)
 
-        labels = input_dict["labels"].tolist()
+        labels = input_dict["labels"].tolist() if "labels" in input_dict else None
         self.crs_rec_model.eval()
         outputs = self.crs_rec_model(**input_dict)
         item_ids = torch.as_tensor(self.kg["item_ids"], device=self.device)
@@ -227,19 +243,20 @@ class BARCOR:
 
         return option_with_max_score
 
-    def get_response(self, conv_dict: Dict[str, Any]) -> str:
+    def get_response(self, conv_dict: Dict[str, Any], id2entity: Dict[int, str]) -> str:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
+            id2entity: Mapping from entity id to entity name.
 
         Returns:
             Generated response.
         """
         recommended_items, _ = self.get_rec(conv_dict)
         recommended_items_str = ""
-        for i, item in enumerate(recommended_items[0][:50]):
-            recommended_items_str += f"{i+1}: {item}\n"
+        for i, item_id in enumerate(recommended_items[0][:3]):
+            recommended_items_str += f"{i+1}: {id2entity[item_id]}\n"
 
         _, generated_response = self.get_conv(conv_dict)
 
