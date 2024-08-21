@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 import torch
 from loguru import logger
 
@@ -8,14 +9,20 @@ class KGForKBRD:
     def __init__(self, kg_dataset, debug=False):
         self.debug = debug
 
-        dataset_dir = f"../data/{kg_dataset}"
+        dataset_dir = f"data/{kg_dataset}"
         with open(os.path.join(dataset_dir, "kg.json"), encoding="utf-8") as f:
             self.kg = json.load(f)
-        with open(os.path.join(dataset_dir, "entity2id.json"), encoding="utf-8") as f:
+        with open(
+            os.path.join(dataset_dir, "entity2id.json"), encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
-        with open(os.path.join(dataset_dir, "item_ids.json"), encoding="utf-8") as f:
+        with open(
+            os.path.join(dataset_dir, "item_ids.json"), encoding="utf-8"
+        ) as f:
             self.item_ids = json.load(f)
-        with open(os.path.join(dataset_dir, "relation2id.json"), encoding="utf-8") as f:
+        with open(
+            os.path.join(dataset_dir, "relation2id.json"), encoding="utf-8"
+        ) as f:
             self.relation2id = json.load(f)
 
         self._prepare_kg()
@@ -25,8 +32,12 @@ class KGForKBRD:
         for entity in self.entity2id.values():
             if str(entity) in self.kg:
                 for relation_and_tail in self.kg[str(entity)]:
-                    edge_list.add((entity, relation_and_tail[1], relation_and_tail[0]))
-                    edge_list.add((relation_and_tail[1], entity, relation_and_tail[0]))
+                    edge_list.add(
+                        (entity, relation_and_tail[1], relation_and_tail[0])
+                    )
+                    edge_list.add(
+                        (relation_and_tail[1], entity, relation_and_tail[0])
+                    )
         edge = torch.tensor(list(edge_list), dtype=torch.long)
 
         self.edge_index = edge[:, :2].t()  # (2, n_edge)
