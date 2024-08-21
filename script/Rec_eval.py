@@ -1,10 +1,9 @@
-import json
 import argparse
-import re
+import json
 import os
-from tqdm import tqdm
-
 import sys
+
+from tqdm import tqdm
 
 sys.path.append("..")
 
@@ -18,7 +17,9 @@ models = ["kbrd", "barcor", "unicrs", "chatgpt"]
 def rec_eval(turn_num, mode):
     for dataset in datasets:
         with open(
-            f"../data/{dataset.split('_')[0]}/entity2id.json", "r", encoding="utf-8"
+            f"../data/{dataset.split('_')[0]}/entity2id.json",
+            "r",
+            encoding="utf-8",
         ) as f:
             entity2id = json.load(f)
 

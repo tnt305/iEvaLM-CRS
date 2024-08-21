@@ -338,7 +338,7 @@ if __name__ == "__main__":
                     )
                 recommender_text = recommender_text.strip()
 
-            if rec_success == True or i == args.turn_num - 1:
+            if rec_success is True or i == args.turn_num - 1:
                 rec_items_str = ""
                 for j, rec_item in enumerate(rec_items[0][:50]):
                     rec_items_str += f"{j+1}: {id2entity[rec_item]}\n"
