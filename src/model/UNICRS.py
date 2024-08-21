@@ -438,8 +438,8 @@ class UNICRS:
         recommended_items, _ = self.get_rec(conv_dict)
 
         recommended_items_str = ""
-        for i, item in enumerate(recommended_items[0][:50]):
-            recommended_items_str += f"{i+1}: {item}\n"
+        for i, item in enumerate(recommended_items[0][:3]):
+            recommended_items_str += f"{i+1}: {id2entity[item]}\n"
 
         _, generated_response = self.get_conv(conv_dict)
 
