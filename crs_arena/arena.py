@@ -22,16 +22,21 @@ The app is composed of four sections:
 import json
 import logging
 import os
-import sqlite3
 import time
+from typing import Dict
 
 import streamlit as st
-from battle_manager import (
+
+from crs_arena.battle_manager import (
     CONVERSATION_COUNTS,
-    CRS_MODELS,
     get_crs_fighters,
     get_unique_user_id,
 )
+from crs_arena.crs_fighter import CRSFighter
+from crs_arena.utils import execute_sql_query
+
+# A message is a dictionary with two keys: role and message.
+Message = Dict[str, str]
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -40,14 +45,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-LOG_DIR = "logs/"
-os.makedirs(LOG_DIR, exist_ok=True)
+CONVERSATION_LOG_DIR = "data/arena/conversation_logs/"
+os.makedirs(CONVERSATION_LOG_DIR, exist_ok=True)
+
 
 # Database setup
-DB_CONNECTION = sqlite3.connect("votes.db")
-DB_CURSOR = DB_CONNECTION.cursor()
 # Create the votes table if it doesn't exist
-DB_CURSOR.execute(
+execute_sql_query(
     "CREATE TABLE IF NOT EXISTS votes ("
     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
     "user_id TEXT, "
@@ -55,9 +59,9 @@ DB_CURSOR.execute(
     "crs2 TEXT, "
     "vote TEXT, "
     "feedback TEXT"
-    ");"
+    ");",
+    {},
 )
-DB_CONNECTION.commit()
 
 
 # Callbacks
@@ -68,20 +72,19 @@ def record_vote(vote: str) -> None:
         vote: Voted CRS model name.
     """
     user_id = st.session_state["user_id"]
-    crs1_model = st.session_state["crs1"]
-    crs2_model = st.session_state["crs2"]
-    r = DB_CURSOR.execute(
+    crs1_model: CRSFighter = st.session_state["crs1"]
+    crs2_model: CRSFighter = st.session_state["crs2"]
+    r = execute_sql_query(
         "INSERT INTO votes (user_id, crs1, crs2, vote) VALUES "
         "(:user_id, :crs1, :crs2, :vote) RETURNING id;",
         {
             "user_id": user_id,
-            "crs1": crs1_model,
-            "crs2": crs2_model,
+            "crs1": crs1_model.name,
+            "crs2": crs2_model.name,
             "vote": vote,
         },
     )
-    last_row_id = r.fetchone()[0]
-    DB_CONNECTION.commit()
+    last_row_id = r[0][0]
     feedback_dialog(row_id=last_row_id)
 
 
@@ -94,39 +97,38 @@ def record_feedback(feedback: str, row_id: int) -> None:
         crs_models: Tuple of CRS model names.
         user_id: Unique user ID.
     """
-    DB_CURSOR.execute(
+    execute_sql_query(
         "UPDATE votes SET feedback = :feedback WHERE id = :row_id;",
         {"feedback": feedback, "row_id": row_id},
     )
-    DB_CONNECTION.commit()
 
 
-def end_conversation(crs: str, fighter=int) -> None:
+def end_conversation(crs: CRSFighter) -> None:
     """Ends the conversation with given CRS model.
 
     Records the conversation in the logs and moves either to the next CRS or
     to the voting section.
 
     Args:
-        crs: The CRS model name.
-        user_id: Unique user ID.
-        fighter: The CRS model number (1 or 2).
+        crs: CRS model.
     """
-    messages = st.session_state[f"messages_{fighter}"]
+    messages = st.session_state[f"messages_{crs.fighter_id}"]
     user_id = st.session_state["user_id"]
-    logger.info(f"User {user_id} ended conversation with {crs}.")
-    with open(os.path.join(LOG_DIR, f"{user_id}_{crs}.json"), "a") as f:
+    logger.info(f"User {user_id} ended conversation with {crs.name}.")
+    with open(
+        os.path.join(CONVERSATION_LOG_DIR, f"{user_id}_{crs.name}.json"), "a"
+    ) as f:
         json.dump(messages, f)
 
     # Update the conversation count
-    CONVERSATION_COUNTS[crs] += 1
+    CONVERSATION_COUNTS[crs.name] += 1
 
-    if fighter == 1:
+    if crs.fighter_id == 1:
         # Disable the chat interface for the first CRS
         st.session_state["crs1_enabled"] = False
         # Enable the chat interface for the second CRS
         st.session_state["crs2_enabled"] = True
-    elif fighter == 2:
+    elif crs.fighter_id == 2:
         # Disable the chat interface for the second CRS
         st.session_state["crs2_enabled"] = False
         # Enable the voting section
@@ -136,23 +138,24 @@ def end_conversation(crs: str, fighter=int) -> None:
     st.rerun()
 
 
-def get_crs_response(crs: str, fighter: int, message: str):
+def get_crs_response(crs: CRSFighter, message: str):
     """Gets the CRS response for the given message.
 
     This method sends a POST request to the CRS model including the history of
     the conversation and the user's message.
 
     Args:
-        crs: CRS model name.
-        fighter: The CRS model number (1 or 2).
+        crs: CRS model.
         message: User's message.
 
     Yields:
         Words from the CRS response.
     """
-    crs_url = CRS_MODELS[crs]
-    # TODO: Send a POST request to the CRS model
-    response = "CRS response for testing purposes."
+    response = crs.reply(
+        input_message=message,
+        history=st.session_state[f"messages_{crs.fighter_id}"],
+    )
+    # response = "CRS response for testing purposes."
     for word in response.split():
         yield f"{word} "
         time.sleep(0.05)
@@ -239,20 +242,18 @@ with col_crs1:
             key="prompt_crs1",
             disabled=not st.session_state["crs1_enabled"],
         ):
-            # Add the user's message to the chat history
-            st.session_state["messages_1"].append(
-                {"role": "user", "message": prompt1}
-            )
             # Display the user's message
             messages_crs1.chat_message("user").write(prompt1)
 
             # Get the CRS response
             response_crs1 = messages_crs1.chat_message(
                 "assistant"
-            ).write_stream(
-                get_crs_response(st.session_state["crs1"], 1, prompt1)
+            ).write_stream(get_crs_response(st.session_state["crs1"], prompt1))
+
+            # Add turn to chat history
+            st.session_state["messages_1"].append(
+                {"role": "user", "message": prompt1}
             )
-            # Add the CRS response to the chat history
             st.session_state["messages_1"].append(
                 {"role": "assistant", "message": response_crs1}
             )
@@ -261,7 +262,7 @@ with col_crs1:
             use_container_width=True,
             key="end_crs1",
             on_click=end_conversation,
-            kwargs={"crs": st.session_state["crs1"], "fighter": 1},
+            kwargs={"crs": st.session_state["crs1"]},
             disabled=not st.session_state["crs1_enabled"],
         )
 
@@ -281,30 +282,28 @@ with col_crs2:
             key="prompt_crs2",
             disabled=not st.session_state["crs2_enabled"],
         ):
-            # Add the user's message to the chat history
-            st.session_state["messages_2"].append(
-                {"role": "user", "message": prompt2}
-            )
             # Display the user's message
             messages_crs2.chat_message("user").write(prompt2)
 
             # Get the CRS response
             response_crs2 = messages_crs2.chat_message(
                 "assistant"
-            ).write_stream(
-                get_crs_response(st.session_state["crs2"], 2, prompt2)
+            ).write_stream(get_crs_response(st.session_state["crs2"], prompt2))
+
+            # Add turn to chat history
+            st.session_state["messages_2"].append(
+                {"role": "user", "message": prompt2}
             )
-            # Add the CRS response to the chat history
             st.session_state["messages_2"].append(
                 {"role": "assistant", "message": response_crs2}
             )
 
         st.button(
-            "[Done with CRS 2](#vote)",
+            "Done with CRS 2",
             use_container_width=True,
             key="end_crs2",
             on_click=end_conversation,
-            kwargs={"crs": st.session_state["crs2"], "fighter": 2},
+            kwargs={"crs": st.session_state["crs2"]},
             disabled=not st.session_state["crs2_enabled"],
         )
 
@@ -317,7 +316,7 @@ container_col1.button(
     use_container_width=True,
     key="crs1_wins",
     on_click=record_vote,
-    kwargs={"vote": st.session_state["crs1"]},
+    kwargs={"vote": st.session_state["crs1"].name},
     disabled=not st.session_state["vote_enabled"],
 )
 container_col2.button(
@@ -325,7 +324,7 @@ container_col2.button(
     use_container_width=True,
     key="crs2_wins",
     on_click=record_vote,
-    kwargs={"vote": st.session_state["crs2"]},
+    kwargs={"vote": st.session_state["crs2"].name},
     disabled=not st.session_state["vote_enabled"],
 )
 
