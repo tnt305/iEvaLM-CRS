@@ -63,3 +63,13 @@ data = {
 
 response = requests.post(url, json=data)
 ```
+
+## Start Streamlit app
+
+A Streamlit is available to collect conversational data from users. The idea is to put two models in competition and ask the best model based on the user's feedback.
+
+```bash
+streamlit run crs-arena/arena.py 
+```
+
+Disclaimer: for now, the Streamlit app is not connected to the models.
