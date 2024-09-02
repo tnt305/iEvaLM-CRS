@@ -10,3 +10,5 @@ tiktoken==0.7.0
 tenacity==9.0.0
 thefuzz==0.22.1
 numpy<2
+streamlit==1.38.0
+SQLAlchemy==1.4.0
