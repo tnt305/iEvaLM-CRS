@@ -198,18 +198,19 @@ st.write(
     "prefer."
 )
 
-st.header("Rules")
+st.header(":page_with_curl: Rules")
 st.write(
-    "* Chat with each CRS (one after the other) to get movie recommendation. "
-    "Once you finish chatting with the CRS, click on the 'Done with CRS 1/2' "
-    "button.\n"
-    "* Vote on which CRS you prefer.\n"
+    "* Chat with each CRS (one after the other) to get movie recommendations "
+    "up until you feel statisfied or frustrated.\n"
+    "* To finish chatting with a CRS, click on the button corresponding to "
+    "your feeling: frustrated or satisfied.\n"
+    "* Vote on which CRS you prefer or declare a tie.\n"
     "* (Optional) Provide more detailed feedback after voting.\n"
 )
 
 # Side-by-Side Battle
-st.header("Side-by-Side Battle")
-st.write("Let's start the battle!\n")
+st.header(":point_down: Side-by-Side Battle")
+st.write("Let's start the battle!")
 
 # Initialize the chat messages
 if "messages_1" not in st.session_state:
@@ -229,7 +230,7 @@ col_crs1, col_crs2 = st.columns(2)
 # CRS 1
 with col_crs1:
     with st.container(border=True):
-        st.write("CRS 1")
+        st.write(":red_circle: CRS 1")
         # Display the chat history
         messages_crs1 = st.container(height=350, border=False)
         for message in st.session_state["messages_1"]:
@@ -269,7 +270,7 @@ with col_crs1:
 # CRS 2
 with col_crs2:
     with st.container(border=True):
-        st.write("CRS 2")
+        st.write(":large_blue_circle: CRS 2")
         # Display the chat history
         messages_crs2 = st.container(height=350, border=False)
         for message in st.session_state["messages_2"]:
@@ -309,10 +310,10 @@ with col_crs2:
 
 # Feedback section
 container = st.container()
-container.subheader("Declare the winner!", anchor="vote")
+container.subheader(":trophy: Declare the winner!", anchor="vote")
 container_col1, container_col2, container_col3 = container.columns(3)
 container_col1.button(
-    "CRS 1",
+    ":red_circle: CRS 1",
     use_container_width=True,
     key="crs1_wins",
     on_click=record_vote,
@@ -320,7 +321,7 @@ container_col1.button(
     disabled=not st.session_state["vote_enabled"],
 )
 container_col2.button(
-    "CRS 2",
+    ":large_blue_circle: CRS 2",
     use_container_width=True,
     key="crs2_wins",
     on_click=record_vote,
