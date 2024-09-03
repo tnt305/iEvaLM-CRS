@@ -310,7 +310,7 @@ with col_crs2:
 # Feedback section
 container = st.container()
 container.subheader("Declare the winner!", anchor="vote")
-container_col1, container_col2 = container.columns(2)
+container_col1, container_col2, container_col3 = container.columns(3)
 container_col1.button(
     "CRS 1",
     use_container_width=True,
@@ -325,6 +325,14 @@ container_col2.button(
     key="crs2_wins",
     on_click=record_vote,
     kwargs={"vote": st.session_state["crs2"].name},
+    disabled=not st.session_state["vote_enabled"],
+)
+container_col3.button(
+    "Tie",
+    use_container_width=True,
+    key="tie",
+    on_click=record_vote,
+    kwargs={"vote": "tie"},
     disabled=not st.session_state["vote_enabled"],
 )
 
