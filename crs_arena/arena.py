@@ -23,7 +23,8 @@ import json
 import logging
 import os
 import time
-from typing import Dict
+from copy import deepcopy
+from typing import Dict, List
 
 import streamlit as st
 
@@ -103,7 +104,7 @@ def record_feedback(feedback: str, row_id: int) -> None:
     )
 
 
-def end_conversation(crs: CRSFighter) -> None:
+def end_conversation(crs: CRSFighter, sentiment: str) -> None:
     """Ends the conversation with given CRS model.
 
     Records the conversation in the logs and moves either to the next CRS or
@@ -111,8 +112,12 @@ def end_conversation(crs: CRSFighter) -> None:
 
     Args:
         crs: CRS model.
+        sentiment: User's sentiment (frustrated or satisfied).
     """
-    messages = st.session_state[f"messages_{crs.fighter_id}"]
+    messages: List[Message] = deepcopy(
+        st.session_state[f"messages_{crs.fighter_id}"]
+    )
+    messages.append({"role": "metadata", "sentiment": sentiment})
     user_id = st.session_state["user_id"]
     logger.info(f"User {user_id} ended conversation with {crs.name}.")
     with open(
@@ -258,12 +263,28 @@ with col_crs1:
             st.session_state["messages_1"].append(
                 {"role": "assistant", "message": response_crs1}
             )
-        st.button(
-            "Done with CRS 1",
+
+        crs1_frustrated_col, crs1_satisfied_col = st.columns(2)
+        crs1_frustrated_col.button(
+            ":rage: Frustrated",
             use_container_width=True,
-            key="end_crs1",
+            key="end_frustated_crs1",
             on_click=end_conversation,
-            kwargs={"crs": st.session_state["crs1"]},
+            kwargs={
+                "crs": st.session_state["crs1"],
+                "sentiment": "frustrated",
+            },
+            disabled=not st.session_state["crs1_enabled"],
+        )
+        crs1_satisfied_col.button(
+            ":heavy_check_mark: Satisfied",
+            use_container_width=True,
+            key="end_satisfied_crs1",
+            on_click=end_conversation,
+            kwargs={
+                "crs": st.session_state["crs1"],
+                "sentiment": "satisfied",
+            },
             disabled=not st.session_state["crs1_enabled"],
         )
 
@@ -299,12 +320,27 @@ with col_crs2:
                 {"role": "assistant", "message": response_crs2}
             )
 
-        st.button(
-            "Done with CRS 2",
+        crs2_frustrated_col, crs2_satisfied_col = st.columns(2)
+        crs2_frustrated_col.button(
+            ":rage: Frustrated",
             use_container_width=True,
-            key="end_crs2",
+            key="end_frustated_crs2",
             on_click=end_conversation,
-            kwargs={"crs": st.session_state["crs2"]},
+            kwargs={
+                "crs": st.session_state["crs2"],
+                "sentiment": "frustrated",
+            },
+            disabled=not st.session_state["crs2_enabled"],
+        )
+        crs2_satisfied_col.button(
+            ":heavy_check_mark: Satisfied",
+            use_container_width=True,
+            key="end_satisfied_crs2",
+            on_click=end_conversation,
+            kwargs={
+                "crs": st.session_state["crs2"],
+                "sentiment": "satisfied",
+            },
             disabled=not st.session_state["crs2_enabled"],
         )
 
