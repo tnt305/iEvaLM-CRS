@@ -23,9 +23,7 @@ def remove_stopwords(utterance: str) -> str:
         Utterance without stopwords.
     """
     tokens = word_tokenize(utterance)
-    filtered_tokens = [
-        token for token in tokens if token not in stopwords.words()
-    ]
+    filtered_tokens = [token for token in tokens if token not in stopwords.words()]
     return " ".join(filtered_tokens)
 
 
