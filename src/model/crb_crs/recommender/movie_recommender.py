@@ -18,8 +18,8 @@ import pandas as pd
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import linear_kernel
 
-from model.crb_crs.utils_preprocessing import get_preference_keywords
 from src.model.crb_crs.recommender.recommender import Recommender
+from src.model.crb_crs.utils_preprocessing import get_preference_keywords
 
 DEFAULT_MOVIELENS_DATA_FOLDER = "data/movielens"
 
@@ -54,7 +54,7 @@ class MovieRecommender(Recommender):
         )
         if os.path.exists(model_path) and os.path.exists(index_path):
             self.matrix_factorization = np.load(model_path)
-            self.movielens_index = pickle.load(index_path)
+            self.movielens_index = pickle.load(open(index_path, "rb"))
         else:
             self.initialize_truncated_svd(save=True)
 
@@ -102,6 +102,7 @@ class MovieRecommender(Recommender):
             movies_with_genres[genre] = movies_with_genres[
                 "genres"
             ].str.contains(genre)
+
         movies_with_genres = movies_with_genres.set_index("databaseId")
         movies_content = movies_with_genres.drop(
             columns=[
@@ -110,13 +111,12 @@ class MovieRecommender(Recommender):
                 "title",
                 "genres",
                 "year",
-                "databaseId",
             ]
         )
         movies_content_matrix = movies_content.values
         movies_content_matrix = np.delete(movies_content_matrix, 0, 1)
         movies_content_matrix = np.delete(movies_content_matrix, 0, 1)
-        return movies_content_matrix, movies_content
+        return movies_content_matrix, movies_with_genres
 
     def initialize_truncated_svd(self, save: bool = False) -> None:
         """Initializes the TruncatedSVD model.
@@ -126,7 +126,7 @@ class MovieRecommender(Recommender):
         self.user_ratings_df = pd.read_csv(
             "data/movielens/ratings_latest.csv",
             usecols=["userId", "movieId", "rating"],
-        )[:15000000]
+        )[:1500000]
         self.movie_df = pd.read_csv(
             os.path.join(self.movielens_data_folder, "movies.csv")
         )
@@ -386,7 +386,7 @@ class MovieRecommender(Recommender):
         """
         mentioned_items = []
         for utterance in context:
-            for movie in self.movie_mentions_df["title"]:
+            for movie in self.movie_mentions_df["title"].values:
                 if movie in utterance:
                     mentioned_items.append(movie)
         return mentioned_items
@@ -468,3 +468,13 @@ class MovieRecommender(Recommender):
         return self.movie_mentions_df.loc[
             self.movie_mentions_df["databaseId"] == int(movie_id)
         ]["title"].iloc[0]
+
+
+if __name__ == "__main__":
+    recommender = MovieRecommender(
+        "data/models/crb_crs_redial/matrix_factorization"
+    )
+    context = ["I like romantic movies."]
+    recommendations = recommender.get_recommendations(context)
+    print(recommendations)
+    recommender.save("data/models/crb_crs_redial/movie_recommender.pkl")
