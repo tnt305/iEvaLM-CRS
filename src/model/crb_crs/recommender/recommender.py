@@ -1,4 +1,4 @@
-"""Recommender component for CRB-CRS model.
+"""Recommender and metadata integration component for CRB-CRS model.
 
 This component is responsible for replacing placeholders, if any, in the
 retrieved response with appropriate movie information.
@@ -30,6 +30,48 @@ class Recommender(ABC):
 
         Returns:
             List of recommended items.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def replace_item_ids_with_recommendations(
+        self, response: str, recommended_items: List[str] = []
+    ) -> str:
+        """Replaces item ids in a response with recommended items.
+
+        If no recommended items are available, the item ids are replaced with
+        their original titles.
+
+        Args:
+            response: Response containing item ids.
+            recommended_items: List of recommended items.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in the
+              subclass.
+        Returns:
+            Response with item ids replaced by recommended items.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def integrate_domain_metadata(
+        self,
+        context: List[str],
+        response: str,
+    ) -> str:
+        """Integrates domain metadata into the response.
+
+        Args:
+            context: Conversation context
+            response: Response to integrate domain metadata into.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in the
+              subclass.
+
+        Returns:
+            Response with domain metadata integrated.
         """
         raise NotImplementedError
 
