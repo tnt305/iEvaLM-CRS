@@ -116,7 +116,7 @@ def preprocess_utterance(
         )
     elif dataset == "opendialkg":
         processed_utterance = opendialkg_replace_items(
-            processed_utterance, utterance.get("items"), item_placeholder
+            processed_utterance, utterance.get("items", []), item_placeholder
         )
     else:
         raise ValueError(f"Dataset {dataset} not supported.")

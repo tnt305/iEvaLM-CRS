@@ -18,6 +18,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src.model.crb_crs.retriever.mle_model import NGramMLE
+from src.model.crb_crs.utils_preprocessing import (
+    get_preference_keywords,
+    preprocess_utterance,
+)
 
 CRS_PREFIX = "CRS~"
 USER_PREFIX = "USER~"
@@ -26,7 +30,11 @@ CONV_PREFIX = "CONVERSATION~"
 
 class Retriever:
     def __init__(
-        self, corpus_folder: str, mle_model: NGramMLE, dataset: str
+        self,
+        corpus_folder: str,
+        mle_model: NGramMLE,
+        dataset: str,
+        domain: str,
     ) -> None:
         """Initializes the retriever.
 
@@ -34,6 +42,7 @@ class Retriever:
             corpus_folder: Path to the folder containing the corpus files.
             mle_model: Maximum Likelihood Estimation (MLE) model.
             dataset: Dataset name.
+            domain: Domain of the CRS.
 
         Raises:
             FileNotFoundError: If the corpus folder is not found.
@@ -47,6 +56,8 @@ class Retriever:
         self._create_vectorizers_and_vocabs()
         self.mle_model = mle_model
         self.dataset = dataset
+        self.domain = domain
+        self.bert_vectorizer = Vectorizer()
 
     def _load_original_corpus(self):
         """Loads the original corpus.
@@ -138,8 +149,8 @@ class Retriever:
             else:
                 retrieved_utterance = self.original_corpus[idx]
 
-            len_retrieved_utterance = word_tokenize(
-                retrieved_utterance.split("~")[-1].strip()
+            len_retrieved_utterance = len(
+                word_tokenize(retrieved_utterance.split("~")[-1].strip())
             )
 
             if (
@@ -197,12 +208,20 @@ class Retriever:
         )
         candidate_pairs = list(map(list, candidate_pairs))
         for i, (cand1, cand2) in enumerate(candidate_pairs):
-            processed_cand1 = None
-            processed_cand2 = None
+            processed_cand1 = preprocess_utterance(
+                {"text": cand1.split("~")[1].strip()},
+                dataset=self.dataset,
+                no_stopwords=False,
+            )
+            processed_cand2 = preprocess_utterance(
+                {"text": cand2.split("~")[1].strip()},
+                dataset=self.dataset,
+                no_stopwords=False,
+            )
 
-            vectorizer = Vectorizer()
-            vectorizer.bert([processed_cand1, processed_cand2])
-            vectors = vectorizer.vectors
+            self.bert_vectorizer.run([processed_cand1, processed_cand2])
+            vectors = self.bert_vectorizer.vectors
+            self.bert_vectorizer.vectors = []
             distance = spatial.distance.cosine(vectors[0], vectors[1])
             candidate_pairs[i].append(round(distance, 4))
 
@@ -245,12 +264,14 @@ class Retriever:
         ranked_candidates = []
 
         for candidate in candidates:
-            processed_candidate = None
+            processed_candidate = preprocess_utterance(
+                {"text": candidate.split("~")[1].strip()},
+                dataset=self.dataset,
+                no_stopwords=False,
+            )
             candidate_tokens = word_tokenize(processed_candidate)
             bigrams = list(ngrams(candidate_tokens, 2))
-            probability = self.mle_model.utterance_probability(
-                processed_candidate, n=2
-            )
+            probability = self.mle_model.probability(processed_candidate, n=2)
             avg_score = probability / len(bigrams)
             avg_score = self._update_candidate_rank_score(
                 avg_score, user_utterance_tokens, candidate_tokens
@@ -258,7 +279,7 @@ class Retriever:
             ranked_candidates.append((candidate, avg_score))
 
         ranked_candidates.sort(key=lambda x: x[1], reverse=True)
-        return ranked_candidates
+        return [candidate[0] for candidate in ranked_candidates]
 
     def _update_candidate_rank_score(
         self,
@@ -289,11 +310,13 @@ class Retriever:
         )
         common_preference_tokens_user_utterance = list(
             set(user_utterance_tokens).intersection(
-                self.get_preference_keywords()
+                get_preference_keywords(self.domain)
             )
         )
         common_preference_tokens_candidate = list(
-            set(candidate_tokens).intersection(self.get_preference_keywords())
+            set(candidate_tokens).intersection(
+                get_preference_keywords(self.domain)
+            )
         )
         common_chit_chat_tokens_user_utterance = list(
             set(chit_chat_context).intersection(user_utterance_tokens)
@@ -325,3 +348,16 @@ class Retriever:
                 avg_score = avg_score + 5.0
 
         return avg_score
+
+    def remove_utterance_prefix(self, utterance: str) -> str:
+        """Removes the utterance prefix from the utterance.
+
+        Args:
+            utterance: Utterance.
+
+        Returns:
+            Utterance without the prefix.
+        """
+        for prefix in [CRS_PREFIX, USER_PREFIX, CONV_PREFIX]:
+            utterance = utterance.replace(prefix, "")
+        return utterance
