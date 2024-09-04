@@ -23,7 +23,9 @@ def remove_stopwords(utterance: str) -> str:
         Utterance without stopwords.
     """
     tokens = word_tokenize(utterance)
-    filtered_tokens = [token for token in tokens if token not in stopwords.words()]
+    filtered_tokens = [
+        token for token in tokens if token not in stopwords.words()
+    ]
     return " ".join(filtered_tokens)
 
 
@@ -36,7 +38,7 @@ def expand_contractions(utterance: str) -> str:
     Returns:
         Utterance with expanded contractions.
     """
-    contractions = json.load(open("data/crb_crs_nlp/contractions.json", "r"))
+    contractions = json.load(open("data/crb_crs/contractions.json", "r"))
     for word in utterance.split():
         if word.lower() in contractions:
             utterance = utterance.replace(word, contractions[word.lower()])
@@ -87,6 +89,7 @@ def preprocess_utterance(
     utterance: Dict[str, Any],
     dataset: str,
     item_placeholder: str = DEFAULT_ITEM_PLACEHOLDER,
+    no_stopwords: bool = True,
 ) -> str:
     """Preprocesses an utterance.
 
@@ -96,6 +99,8 @@ def preprocess_utterance(
     Args:
         utterance: Input utterance.
         dataset: Name of the origin dataset.
+        item_placeholder: Placeholder for item id.
+        stopwords: Whether to remove stopwords.
 
     Raises:
         ValueError: If dataset is not supported.
@@ -117,5 +122,54 @@ def preprocess_utterance(
         raise ValueError(f"Dataset {dataset} not supported.")
 
     processed_utterance = expand_contractions(processed_utterance)
-    processed_utterance = remove_stopwords(processed_utterance)
+    if no_stopwords:
+        processed_utterance = remove_stopwords(processed_utterance)
     return processed_utterance
+
+
+def get_preference_keywords(domain: str) -> List[str]:
+    """Returns a list of preference keywords.
+
+    Args:
+        domain: Domain name.
+
+    Raises:
+        ValueError: If the domain is not supported.
+    """
+    movies_preference_keywords = [
+        "scary",
+        "horror",
+        "pixar",
+        "graphic",
+        "classic",
+        "comedy",
+        "kids",
+        "funny",
+        "disney",
+        "comedies",
+        "action",
+        "family",
+        "adventure",
+        "crime",
+        "fantasy",
+        "thriller",
+        "scifi",
+        "documentary",
+        "science fiction",
+        "drama",
+        "romance",
+        "romances",
+        "romantic",
+        "mystery",
+        "mysteries",
+        "history",
+        "no preference",
+        "suspense",
+    ]
+    if domain == "movies":
+        return movies_preference_keywords
+    elif domain == "movies_books":
+        return (
+            movies_preference_keywords + []
+        )  # TOOD: Add more keywords related to books
+    raise ValueError(f"Domain not supported: {domain}")

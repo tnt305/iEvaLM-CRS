@@ -19,6 +19,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.model.crb_crs.retriever.mle_model import NGramMLE
 
+CRS_PREFIX = "CRS~"
+USER_PREFIX = "USER~"
+CONV_PREFIX = "CONVERSATION~"
+
 
 class Retriever:
     def __init__(
@@ -139,12 +143,12 @@ class Retriever:
             )
 
             if (
-                not retrieved_utterance.__contains__("RECOMMENDER~")
+                not retrieved_utterance.__contains__(CRS_PREFIX)
                 or len_retrieved_utterance <= 3
                 or len_retrieved_utterance > 20
             ):
                 continue
-            elif not self.original_corpus[idx].__contains__("USER~"):
+            elif not self.original_corpus[idx].__contains__(USER_PREFIX):
                 continue
             else:
                 candidates.append(self.original_corpus[idx + 1])
