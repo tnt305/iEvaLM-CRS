@@ -23,11 +23,8 @@ class NGramMLE:
             corpus_file: File containing the corpus words. Defaults to None.
 
         Raises:
-            ValueError: If n is not in [1, 2, 3, 4, 5].
             FileNotFoundError: If corpus_file is defined but not found.
         """
-        if n not in [1, 2, 3, 4, 5]:
-            raise ValueError("n must be in [1, 2, 3, 4, 5]")
         if corpus_file and not os.path.exists(corpus_file):
             raise FileNotFoundError(f"Corpus file not found: {corpus_file}")
 
@@ -69,7 +66,8 @@ class NGramMLE:
         """
         if n == 1:
             return calc.log(
-                (self.ngrams[1][ngram] + 1) / (self.total_words + len(self.ngrams[1]))
+                (self.ngrams[1][ngram] + 1)
+                / (self.total_words + len(self.ngrams[1]))
             )
 
         assert n <= self.n, f"n must be less than or equal to {self.n}"

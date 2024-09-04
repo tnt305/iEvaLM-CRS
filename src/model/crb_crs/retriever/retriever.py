@@ -17,11 +17,13 @@ from sent2vec.vectorizer import Vectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from src.model.crb_crs.mle_model import NGramMLE
+from src.model.crb_crs.retriever.mle_model import NGramMLE
 
 
 class Retriever:
-    def __init__(self, corpus_folder: str, mle_model: NGramMLE, dataset: str) -> None:
+    def __init__(
+        self, corpus_folder: str, mle_model: NGramMLE, dataset: str
+    ) -> None:
         """Initializes the retriever.
 
         Args:
@@ -33,7 +35,9 @@ class Retriever:
             FileNotFoundError: If the corpus folder is not found.
         """
         if not os.path.exists(corpus_folder):
-            raise FileNotFoundError(f"Corpus folder not found: {corpus_folder}")
+            raise FileNotFoundError(
+                f"Corpus folder not found: {corpus_folder}"
+            )
 
         self.corpus_folder = corpus_folder
         self._create_vectorizers_and_vocabs()
@@ -46,7 +50,9 @@ class Retriever:
         Raises:
             FileNotFoundError: If the original corpus file is not found.
         """
-        with open(os.path.join(self.corpus_folder, "original_corpus.txt"), "r") as f:
+        with open(
+            os.path.join(self.corpus_folder, "original_corpus.txt"), "r"
+        ) as f:
             self.original_corpus = f.read().splitlines()
 
     def _load_preprocessed_corpora(self):
@@ -61,7 +67,9 @@ class Retriever:
             self.preprocessed_corpus = f.read().splitlines()
 
         with open(
-            os.path.join(self.corpus_folder, "preprocessed_corpus_no_stopwords.txt"),
+            os.path.join(
+                self.corpus_folder, "preprocessed_corpus_no_stopwords.txt"
+            ),
             "r",
         ) as f:
             self.preprocessed_corpus_no_stopwords = f.read().splitlines()
@@ -77,13 +85,19 @@ class Retriever:
         self._load_preprocessed_corpora()
 
         self.vectorizer = TfidfVectorizer()
-        self.corpus_vocab = self.vectorizer.fit_transform(self.preprocessed_corpus)
+        self.corpus_vocab = self.vectorizer.fit_transform(
+            self.preprocessed_corpus
+        )
         self.vectorizer_no_stopwords = TfidfVectorizer()
-        self.corpus_no_stopwords_vocab = self.vectorizer_no_stopwords.fit_transform(
-            self.preprocessed_corpus_no_stopwords
+        self.corpus_no_stopwords_vocab = (
+            self.vectorizer_no_stopwords.fit_transform(
+                self.preprocessed_corpus_no_stopwords
+            )
         )
 
-    def retrieve_candidates(self, context: str, num_candidates: int = 5) -> List[str]:
+    def retrieve_candidates(
+        self, context: str, num_candidates: int = 5
+    ) -> List[str]:
         """Retrieves the most relevant candidates given a context.
 
         Args:
@@ -151,7 +165,7 @@ class Retriever:
         return ",".join(context)
 
     def filter_outliers_from_candidates(
-        self, candidates: List[str], num_candidates: int
+        self, candidates: List[str], num_candidates: int = 5
     ) -> List[str]:
         """Filters out outliers from the list of candidates.
 
@@ -162,7 +176,7 @@ class Retriever:
 
         Args:
             candidates: List of candidates.
-            num_candidates: Number of candidates to retrieve.
+            num_candidates: Number of candidates to retrieve. Defaults to 5.
 
         Raises:
             ValueError: If the list of candidates is empty.
@@ -174,7 +188,9 @@ class Retriever:
             raise ValueError("The list of candidates is empty.")
 
         candidate_pairs = list(itertools.combinations(candidates, 2))
-        num_valid_candidates = math.floor(len(candidate_pairs) / num_candidates)
+        num_valid_candidates = math.floor(
+            len(candidate_pairs) / num_candidates
+        )
         candidate_pairs = list(map(list, candidate_pairs))
         for i, (cand1, cand2) in enumerate(candidate_pairs):
             processed_cand1 = None
@@ -189,7 +205,8 @@ class Retriever:
         # Sort the candidate pairs based on the similarity score
         candidate_pairs.sort(key=lambda x: x[-1], reverse=True)
         filtered_candidates = [
-            candidate[0] for candidate in candidate_pairs[:num_valid_candidates]
+            candidate[0]
+            for candidate in candidate_pairs[:num_valid_candidates]
         ]
 
         return filtered_candidates
@@ -204,50 +221,6 @@ class Retriever:
             return ["movie", "movies", "movieid"]
         elif self.dataset == "opendialkg":
             return ["movie", "movies", "book", "books", "itemid"]
-        raise ValueError(f"Dataset not supported: {self.dataset}")
-
-    def _get_preference_keywords(self) -> List[str]:
-        """Returns a list of preference keywords.
-
-        Raises:
-            ValueError: If the dataset is not supported.
-        """
-        movies_preference_keywords = [
-            "scary",
-            "horror",
-            "pixar",
-            "graphic",
-            "classic",
-            "comedy",
-            "kids",
-            "funny",
-            "disney",
-            "comedies",
-            "action",
-            "family",
-            "adventure",
-            "crime",
-            "fantasy",
-            "thriller",
-            "scifi",
-            "documentary",
-            "science fiction",
-            "drama",
-            "romance",
-            "romances",
-            "romantic",
-            "mystery",
-            "mysteries",
-            "history",
-            "no preference",
-            "suspense",
-        ]
-        if self.dataset == "redial":
-            return movies_preference_keywords
-        elif self.dataset == "opendialkg":
-            return (
-                movies_preference_keywords + []
-            )  # TOOD: Add more keywords related to books
         raise ValueError(f"Dataset not supported: {self.dataset}")
 
     def rank_candidates(
@@ -271,7 +244,9 @@ class Retriever:
             processed_candidate = None
             candidate_tokens = word_tokenize(processed_candidate)
             bigrams = list(ngrams(candidate_tokens, 2))
-            probability = self.mle_model.utterance_probability(processed_candidate, n=2)
+            probability = self.mle_model.utterance_probability(
+                processed_candidate, n=2
+            )
             avg_score = probability / len(bigrams)
             avg_score = self._update_candidate_rank_score(
                 avg_score, user_utterance_tokens, candidate_tokens
@@ -309,10 +284,12 @@ class Retriever:
             set(candidate_tokens).intersection(self._item_context())
         )
         common_preference_tokens_user_utterance = list(
-            set(user_utterance_tokens).intersection(self._get_preference_keywords())
+            set(user_utterance_tokens).intersection(
+                self.get_preference_keywords()
+            )
         )
         common_preference_tokens_candidate = list(
-            set(candidate_tokens).intersection(self._get_preference_keywords())
+            set(candidate_tokens).intersection(self.get_preference_keywords())
         )
         common_chit_chat_tokens_user_utterance = list(
             set(chit_chat_context).intersection(user_utterance_tokens)
@@ -328,7 +305,11 @@ class Retriever:
                 # Item context tokens are present in both user and candidate
                 # utterances
                 avg_score = avg_score + 1.0
-            if len(common_tokens_user_utterance) == len(common_tokens_candidate) == 0:
+            if (
+                len(common_tokens_user_utterance)
+                == len(common_tokens_candidate)
+                == 0
+            ):
                 # No item context tokens in both user and candidate utterances
                 avg_score = avg_score + 1.0
 
