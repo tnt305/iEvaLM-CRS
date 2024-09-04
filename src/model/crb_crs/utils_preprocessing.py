@@ -124,6 +124,10 @@ def preprocess_utterance(
     processed_utterance = expand_contractions(processed_utterance)
     if no_stopwords:
         processed_utterance = remove_stopwords(processed_utterance)
+
+    if processed_utterance == "":
+        processed_utterance = "**"
+
     return processed_utterance
 
 

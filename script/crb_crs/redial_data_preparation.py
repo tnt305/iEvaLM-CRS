@@ -126,8 +126,6 @@ def save_parsed_dialogues(parsed_dialogues: List[str], path: str) -> None:
         parsed_dialogues: List of parsed dialogues.
         path: Path to the output file.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-
     with open(path, "w", encoding="utf-8") as f:
         for utterance in parsed_dialogues:
             f.write(f"{utterance}\n")
@@ -147,7 +145,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output_folder",
         type=str,
-        default="data/crb_crs/",
+        default="data/redial/corpus/",
         help="Path to output folder.",
     )
     return parser.parse_args()
@@ -173,23 +171,20 @@ if __name__ == "__main__":
 
     logging.info("Finished parsing dialogues.")
 
+    os.makedirs(args.output_folder, exist_ok=True)
     save_parsed_dialogues(
         parsed_dialogue_original,
-        os.path.join(
-            args.output_folder, "parsed_redial_dialogues_original.txt"
-        ),
+        os.path.join(args.output_folder, "original_corpus.txt"),
     )
     save_parsed_dialogues(
         parsed_dialogue_preprocessed,
-        os.path.join(
-            args.output_folder, "parsed_redial_dialogues_preprocessed.txt"
-        ),
+        os.path.join(args.output_folder, "preprocessed_corpus.txt"),
     )
     save_parsed_dialogues(
         parsed_dialogue_preprocessed_no_stopwords,
         os.path.join(
             args.output_folder,
-            "parsed_redial_dialogues_preprocessed_no_stopwords.txt",
+            "preprocessed_corpus_no_stopwords.txt",
         ),
     )
 
