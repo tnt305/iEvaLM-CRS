@@ -12,7 +12,7 @@ https://github.com/ahtsham58/CRB-CRS/tree/main
 import logging
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from nltk.tokenize import word_tokenize
 
@@ -61,14 +61,21 @@ class CRBCRSModel:
         pass
 
     def get_response(
-        self, conv_dict: Dict[str, Any], id2entity: Dict[int, str], **kwargs
-    ) -> str:
+        self,
+        conv_dict: Dict[str, Any],
+        id2entity: Dict[int, str] = None,
+        options: Tuple[str, Dict[str, str]] = None,
+        state: List[float] = None,
+    ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
-            id2entity: Mapping from entity id to entity name.
-
+            id2entity (not used): Mapping from entity id to entity name.
+              Defaults to None.
+            options (not used): Prompt with options and dictionary of options.
+              Defaults to None.
+            state (not used): State of the option choices. Defaults to None.
         Returns:
             Generated response.
         """
@@ -122,7 +129,7 @@ class CRBCRSModel:
             logging.error(f"Error while integrating metadata: {e}")
 
         response = self.retriever.remove_utterance_prefix(response)
-        return response
+        return response, None
 
     def get_item_ids_from_retrieved_response(self, response: str) -> List[str]:
         """Extracts item ids from a retrieved response.

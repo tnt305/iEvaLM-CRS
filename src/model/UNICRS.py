@@ -1,7 +1,7 @@
 import json
 import sys
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 import torch
 from accelerate import Accelerator
@@ -58,8 +58,8 @@ class UNICRS:
         self.conv_model_path = conv_model
 
         # config
-        gpt2_special_tokens_dict, prompt_special_tokens_dict = get_special_tokens_dict(
-            kg_dataset
+        gpt2_special_tokens_dict, prompt_special_tokens_dict = (
+            get_special_tokens_dict(kg_dataset)
         )
 
         # backbone
@@ -73,7 +73,9 @@ class UNICRS:
         self.model = self.model.to(self.device)
 
         # text prompt encoder
-        self.prompt_tokenizer = AutoTokenizer.from_pretrained(self.text_tokenizer_path)
+        self.prompt_tokenizer = AutoTokenizer.from_pretrained(
+            self.text_tokenizer_path
+        )
         self.prompt_tokenizer.add_special_tokens(prompt_special_tokens_dict)
 
         self.text_encoder = AutoModel.from_pretrained(self.text_encoder)
@@ -82,10 +84,16 @@ class UNICRS:
 
         # kg prompt
         self.kg_dataset = kg_dataset
-        self.kg = KGForUniCRS(kg=self.kg_dataset, debug=self.debug).get_kg_info()
-        self.item_ids = torch.as_tensor(self.kg["item_ids"], device=self.device)
+        self.kg = KGForUniCRS(
+            kg=self.kg_dataset, debug=self.debug
+        ).get_kg_info()
+        self.item_ids = torch.as_tensor(
+            self.kg["item_ids"], device=self.device
+        )
         self.kg_dataset_path = f"data/{self.kg_dataset}"
-        with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
+        with open(
+            f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
         self.entity_pad_id = self.kg["pad_entity_id"]
 
@@ -106,7 +114,9 @@ class UNICRS:
         if rec_model is not None:
             self.rec_prompt_encoder.load(self.rec_model_path)
         self.rec_prompt_encoder = self.rec_prompt_encoder.to(self.device)
-        self.rec_prompt_encoder = self.accelerator.prepare(self.rec_prompt_encoder)
+        self.rec_prompt_encoder = self.accelerator.prepare(
+            self.rec_prompt_encoder
+        )
 
         # prompt for conv
         self.conv_prompt_encoder = KGPrompt(
@@ -124,7 +134,9 @@ class UNICRS:
         if conv_model is not None:
             self.conv_prompt_encoder.load(self.conv_model_path)
         self.conv_prompt_encoder = self.conv_prompt_encoder.to(self.device)
-        self.conv_prompt_encoder = self.accelerator.prepare(self.conv_prompt_encoder)
+        self.conv_prompt_encoder = self.accelerator.prepare(
+            self.conv_prompt_encoder
+        )
 
     def get_rec(self, conv_dict):
         text_list = []
@@ -175,7 +187,9 @@ class UNICRS:
                         "prompt": prompt_ids,
                         "entity": [
                             self.entity2id[ent]
-                            for ent in conv_dict["entity"][-self.entity_max_length :]
+                            for ent in conv_dict["entity"][
+                                -self.entity_max_length :
+                            ]
                             if ent in self.entity2id
                         ],
                         "rec": self.entity2id[rec],
@@ -237,7 +251,9 @@ class UNICRS:
         input_batch["entity"] = entity_list
 
         # infer
-        token_embeds = self.text_encoder(**input_batch["prompt"]).last_hidden_state
+        token_embeds = self.text_encoder(
+            **input_batch["prompt"]
+        ).last_hidden_state
         prompt_embeds = self.rec_prompt_encoder(
             entity_ids=input_batch["entity"],
             token_embeds=token_embeds,
@@ -343,7 +359,9 @@ class UNICRS:
 
         for k, v in context_dict.items():
             if not isinstance(v, torch.Tensor):
-                context_dict[k] = torch.as_tensor(v, device=self.device).unsqueeze(0)
+                context_dict[k] = torch.as_tensor(
+                    v, device=self.device
+                ).unsqueeze(0)
 
         input_batch = {}
 
@@ -364,7 +382,9 @@ class UNICRS:
         )
         for k, v in prompt_dict.items():
             if not isinstance(v, torch.Tensor):
-                prompt_dict[k] = torch.as_tensor(v, device=self.device).unsqueeze(0)
+                prompt_dict[k] = torch.as_tensor(
+                    v, device=self.device
+                ).unsqueeze(0)
         input_batch["prompt"] = prompt_dict
 
         entity_list = padded_tensor(
@@ -381,7 +401,9 @@ class UNICRS:
 
         self.conv_prompt_encoder.eval()
 
-        token_embeds = self.text_encoder(**input_batch["prompt"]).last_hidden_state
+        token_embeds = self.text_encoder(
+            **input_batch["prompt"]
+        ).last_hidden_state
         prompt_embeds = self.conv_prompt_encoder(
             entity_ids=input_batch["entity"],
             token_embeds=token_embeds,
@@ -410,7 +432,8 @@ class UNICRS:
             output_scores=True,
         )
         option_token_ids = [
-            self.tokenizer.encode(op, add_special_tokens=False)[0] for op in options
+            self.tokenizer.encode(op, add_special_tokens=False)[0]
+            for op in options
         ]
         option_scores = outputs.scores[-1][0][option_token_ids]
         option_scores += state
@@ -422,37 +445,44 @@ class UNICRS:
         self,
         conv_dict: Dict[str, Any],
         id2entity: Dict[int, str],
-        movie_token: str = "<mask>",
-    ) -> str:
+        options: Tuple[str, Dict[str, str]],
+        state: List[float],
+    ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity ID to entity name.
-            movie_token: Token to replace the movie name with. Defaults to
-              "<mask>".
+            options: Prompt with options and dictionary of options.
+            state: State of the option choices.
 
         Returns:
-            Generated response.
+            Generated response and updated state.
         """
-        recommended_items, _ = self.get_rec(conv_dict)
+        generated_inputs, generated_response = self.get_conv(conv_dict)
+        options_letter = list(options[1].keys())
 
-        recommended_items_str = ""
-        for i, item in enumerate(recommended_items[0][:3]):
-            recommended_items_str += f"{i+1}: {id2entity[item]}\n"
+        # Get the choice between recommend and generate
+        choice = self.get_choice(generated_inputs, options_letter, state)
 
-        _, generated_response = self.get_conv(conv_dict)
-
-        generated_response = generated_response[
-            generated_response.rfind("System:") + len("System:") + 1 :
-        ]
-        for i in range(str.count(generated_response, movie_token)):
-            generated_response = generated_response.replace(
-                movie_token, id2entity[recommended_items[i]], 1
+        if choice == options_letter[-1]:
+            # Generate a recommendation
+            recommended_items, _ = self.get_rec(conv_dict)
+            recommended_items_str = ""
+            for i, item_id in enumerate(recommended_items[0][:3]):
+                recommended_items_str += f"{i+1}: {id2entity[item_id]}  \n"
+            response = (
+                "I would recommend the following items:  \n"
+                f"{recommended_items_str}"
             )
-        generated_response = generated_response.strip()
+        else:
+            # Generate a response to ask for preferences. The fallback is to
+            # use the generated response.
+            response = (
+                options[1].get(choice, {}).get("template", generated_response)
+            )
 
-        return (
-            f"I would recommend the following items: {recommended_items_str}"
-            f"{generated_response}"
-        )
+            # Update the state
+            state[options_letter.index(choice)] = -1e5
+
+        return response, state

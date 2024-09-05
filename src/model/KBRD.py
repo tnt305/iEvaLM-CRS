@@ -1,7 +1,7 @@
 import json
 import sys
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 import torch
 from accelerate import Accelerator
@@ -61,14 +61,18 @@ class KBRD:
         self.pad_to_multiple_of = 8
 
         self.kg_dataset_path = f"data/{self.kg_dataset}"
-        with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
+        with open(
+            f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
 
         # Initialize the accelerator.
         self.accelerator = Accelerator(device_placement=False)
         self.device = self.accelerator.device
 
-        self.kg = KGForKBRD(kg_dataset=self.kg_dataset, debug=self.debug).get_kg_info()
+        self.kg = KGForKBRD(
+            kg_dataset=self.kg_dataset, debug=self.debug
+        ).get_kg_info()
         self.pad_id = self.kg["pad_id"]
 
         # rec model
@@ -109,7 +113,9 @@ class KBRD:
     def get_rec(self, conv_dict):
         data_dict = {
             "item": [
-                self.entity2id[rec] for rec in conv_dict["rec"] if rec in self.entity2id
+                self.entity2id[rec]
+                for rec in conv_dict["rec"]
+                if rec in self.entity2id
             ],
         }
 
@@ -153,12 +159,15 @@ class KBRD:
         with torch.no_grad():
             data_dict["entity"]["edge_index"] = edge_index
             data_dict["entity"]["edge_type"] = edge_type
-            outputs = self.crs_rec_model(**data_dict["entity"], reduction="mean")
+            outputs = self.crs_rec_model(
+                **data_dict["entity"], reduction="mean"
+            )
 
             logits = outputs["logit"][:, self.kg["item_ids"]]
             ranks = torch.topk(logits, k=50, dim=-1).indices.tolist()
             preds = [
-                [self.kg["item_ids"][rank] for rank in rank_list] for rank_list in ranks
+                [self.kg["item_ids"][rank] for rank in rank_list]
+                for rank_list in ranks
             ]
             labels = data_dict["item"]
 
@@ -198,7 +207,9 @@ class KBRD:
 
         for k, v in context_batch.items():
             if not isinstance(v, torch.Tensor):
-                context_batch[k] = torch.as_tensor(v, device=self.device).unsqueeze(0)
+                context_batch[k] = torch.as_tensor(
+                    v, device=self.device
+                ).unsqueeze(0)
 
         entity_list = (
             [
@@ -263,7 +274,8 @@ class KBRD:
             output_scores=True,
         )
         option_token_ids = [
-            self.tokenizer.encode(op, add_special_tokens=False)[0] for op in options
+            self.tokenizer.encode(op, add_special_tokens=False)[0]
+            for op in options
         ]
         option_scores = outputs.scores[-1][0][option_token_ids]
         option_scores += state
@@ -271,26 +283,51 @@ class KBRD:
 
         return option_with_max_score
 
-    def get_response(self, conv_dict: Dict[str, Any], id2entity: Dict[int, str]) -> str:
+    def get_response(
+        self,
+        conv_dict: Dict[str, Any],
+        id2entity: Dict[int, str],
+        options: Tuple[str, Dict[str, str]],
+        state: List[float],
+    ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity id to entity name.
+            options: Prompt with options and dictionary of options.
+            state: State of the option choices.
 
         Returns:
-            Generated response.
+            Generated response and updated state.
         """
-        recommended_items, _ = self.get_rec(conv_dict)
-        recommended_items_str = ""
-        for i, item_id in enumerate(recommended_items[0][:3]):
-            recommended_items_str += f"{i+1}: {id2entity[item_id]}\n"
+        generated_inputs, generated_response = self.get_conv(conv_dict)
+        options_letter = list(options[1].keys())
 
-        _, generated_response = self.get_conv(conv_dict)
-        return (
-            f"I would recommend the following items: {recommended_items_str}"
-            f"{generated_response}"
-        )
+        # Get the choice between recommend and generate
+        choice = self.get_choice(generated_inputs, options_letter, state)
+
+        if choice == options_letter[-1]:
+            # Generate a recommendation
+            recommended_items, _ = self.get_rec(conv_dict)
+            recommended_items_str = ""
+            for i, item_id in enumerate(recommended_items[0][:3]):
+                recommended_items_str += f"{i+1}: {id2entity[item_id]}  \n"
+            response = (
+                "I would recommend the following items:  \n"
+                f"{recommended_items_str}"
+            )
+        else:
+            # Generate a response to ask for preferences. The fallback is to
+            # use the generated response.
+            response = (
+                options[1].get(choice, {}).get("template", generated_response)
+            )
+
+            # Update the state
+            state[options_letter.index(choice)] = -1e5
+
+        return response, state
 
 
 if __name__ == "__main__":

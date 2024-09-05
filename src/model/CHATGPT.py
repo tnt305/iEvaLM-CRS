@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import openai
@@ -138,9 +138,13 @@ class CHATGPT:
         self.kg_dataset = kg_dataset
 
         self.kg_dataset_path = f"data/{self.kg_dataset}"
-        with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
+        with open(
+            f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
-        with open(f"{self.kg_dataset_path}/id2info.json", "r", encoding="utf-8") as f:
+        with open(
+            f"{self.kg_dataset_path}/id2info.json", "r", encoding="utf-8"
+        ) as f:
             self.id2info = json.load(f)
 
         self.id2entityid = {}
@@ -157,7 +161,9 @@ class CHATGPT:
             if item_id in self.id2entityid:
                 id2item_id.append(item_id)
 
-                with open(f"{self.item_embedding_path}/{file}", encoding="utf-8") as f:
+                with open(
+                    f"{self.item_embedding_path}/{file}", encoding="utf-8"
+                ) as f:
                     embed = json.load(f)
                     item_emb_list.append(embed)
 
@@ -180,7 +186,9 @@ class CHATGPT:
 
     def get_rec(self, conv_dict):
         rec_labels = [
-            self.entity2id[rec] for rec in conv_dict["rec"] if rec in self.entity2id
+            self.entity2id[rec]
+            for rec in conv_dict["rec"]
+            if rec in self.entity2id
         ]
 
         context = conv_dict["context"]
@@ -207,7 +215,9 @@ class CHATGPT:
         rank_arr = np.argsort(sim_mat, axis=-1).tolist()
         rank_arr = np.flip(rank_arr, axis=-1)[:, :50]
         item_rank_arr = self.id2item_id_arr[rank_arr].tolist()
-        item_rank_arr = [[self.id2entityid[item_id] for item_id in item_rank_arr[0]]]
+        item_rank_arr = [
+            [self.id2entityid[item_id] for item_id in item_rank_arr[0]]
+        ]
 
         return item_rank_arr, rec_labels
 
@@ -239,7 +249,9 @@ class CHATGPT:
                 updated_options.append(options[i])
 
         encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-        logit_bias = {encoding.encode(option)[0]: 10 for option in updated_options}
+        logit_bias = {
+            encoding.encode(option)[0]: 10 for option in updated_options
+        }
 
         context = conv_dict["context"]
         context_list = []  # for model
@@ -257,25 +269,51 @@ class CHATGPT:
         response_op = annotate_chat(context_list, logit_bias=logit_bias)
         return response_op[0]
 
-    def get_response(self, conv_dict: Dict[str, Any], id2entity: Dict[int, str]) -> str:
+    def get_response(
+        self,
+        conv_dict: Dict[str, Any],
+        id2entity: Dict[int, str],
+        options: Tuple[str, Dict[str, str]],
+        state: List[float],
+    ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity id to entity name.
+            options: Prompt with options and dictionary of options.
+            state: State of the option choices.
 
         Returns:
-            Generated response.
+            Generated response and updated state.
         """
-        recommended_items, _ = self.get_rec(conv_dict)
+        conv_dict["context"].append(options[0])
+        generated_inputs, generated_response = self.get_conv(conv_dict)
+        options_letter = list(options[1].keys())
 
-        recommended_items_str = ""
-        for i, item in enumerate(recommended_items[0][:3]):
-            recommended_items_str += f"{i+1}: {id2entity[item]}\n"
-
-        _, generated_response = self.get_conv(conv_dict)
-
-        return (
-            f"I would recommend the following items: {recommended_items_str}"
-            f"{generated_response}"
+        # Get the choice between recommend and generate
+        choice = self.get_choice(
+            generated_inputs, options_letter, state, conv_dict
         )
+
+        if choice == options_letter[-1]:
+            # Generate a recommendation
+            recommended_items, _ = self.get_rec(conv_dict)
+            recommended_items_str = ""
+            for i, item_id in enumerate(recommended_items[0][:3]):
+                recommended_items_str += f"{i+1}: {id2entity[item_id]}  \n"
+            response = (
+                "I would recommend the following items:  \n"
+                f"{recommended_items_str}"
+            )
+        else:
+            # Generate a response to ask for preferences. The fallback is to
+            # use the generated response.
+            response = (
+                options[1].get(choice, {}).get("template", generated_response)
+            )
+
+            # Update the state
+            state[options_letter.index(choice)] = -1e5
+
+        return response, state

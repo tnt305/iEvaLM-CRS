@@ -261,7 +261,7 @@ class BARCOR:
         id2entity: Dict[int, str],
         options: Tuple[str, Dict[str, str]],
         state: List[float],
-    ) -> str:
+    ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
         Args:
@@ -271,15 +271,13 @@ class BARCOR:
             state: State of the option choices.
 
         Returns:
-            Generated response.
+            Generated response and updated state.
         """
         generated_inputs, generated_response = self.get_conv(conv_dict)
         options_letter = list(options[1].keys())
 
         # Get the choice between recommend and generate
-        choice = self.get_choice(
-            generated_inputs, options_letter, state, conv_dict
-        )
+        choice = self.get_choice(generated_inputs, options_letter, state)
 
         if choice == options_letter[-1]:
             # Generate a recommendation
