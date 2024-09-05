@@ -1,0 +1,5 @@
+dataset: "redial"
+domain: "movies"
+corpus_folder: "data/redial/corpus"
+mle_model_path: "data/models/crb_crs_redial/mle_model.pkl"
+recommender_path: "data/models/crb_crs_redial/movie_recommender.pkl"

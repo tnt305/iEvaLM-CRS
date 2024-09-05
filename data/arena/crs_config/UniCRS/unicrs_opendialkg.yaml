@@ -1,0 +1,13 @@
+kg_dataset: opendialkg
+model: microsoft/DialoGPT-small
+rec_model: data/models/unicrs_rec_opendialkg/
+conv_model: data/models/unicrs_conv_opendialkg/
+context_max_length: 128
+entity_max_length: 20
+tokenizer_path: microsoft/DialoGPT-small
+text_tokenizer_path: roberta-base
+resp_max_length: 64
+text_encoder: roberta-base
+num_bases: 8
+seed: 42
+debug: false
