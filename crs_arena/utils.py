@@ -6,6 +6,7 @@ import sqlite3
 from datetime import timedelta
 from typing import Any, Dict, List
 
+import openai
 import streamlit as st
 import yaml
 
@@ -35,7 +36,7 @@ def get_crs_model(model_name: str, model_config_file: str) -> CRSModel:
     model_args = yaml.safe_load(open(model_config_file, "r"))
 
     if "chatgpt" in model_name:
-        model_args["api_key"] = st.secrets.openai.api_key
+        openai.api_key = st.secrets.openai.api_key
 
     # Extract crs model from name
     name = model_name.split("_")[0]
