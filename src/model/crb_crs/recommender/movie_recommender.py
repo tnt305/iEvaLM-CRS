@@ -121,6 +121,11 @@ class MovieRecommender(Recommender):
                 "title_formatted",
                 "genres",
                 "year",
+                "imdbID",
+                "directors",
+                "actors",
+                "movielensID",
+                "country",
             ]
         )
         movies_content_matrix = movies_content.values
@@ -590,34 +595,33 @@ class MovieRecommender(Recommender):
         """
         # Get last movie mentioned by the agent
         agent_context = [utt for utt in context[1::2]]
-        print(f"DEBUG agent_context: {agent_context}")
         items = self.detect_previous_item_mentions(agent_context, False)
-        print(f"DEBUG items: {items}")
         last_movie_mentioned = items[-1] if len(items) > 0 else None
 
         last_user_utterance = context[-1].lower()
 
         if last_movie_mentioned is not None:
-            movie_metadata = self.movie_mentions_df[
+            movie_metadata = self.movie_mentions_df.loc[
                 [int(last_movie_mentioned)]
             ]
-            print(f"DEBUG movie_metadata: {movie_metadata}")
             if last_user_utterance.__contains__(
                 "who is"
             ) or last_user_utterance.lower().__contains__("who's"):
                 # Integrate actor information
                 actors = movie_metadata["actors"].iloc[0]
                 if len(actors) > 0:
-                    return f"{CRS_PREFIX} It stars {', '.join(actors)}."
+                    return f"{CRS_PREFIX} It stars {actors}."
             if (
                 last_user_utterance.__contains__("it about")
                 or last_user_utterance.__contains__("plot")
                 or last_user_utterance.__contains__("that about")
             ):
                 # Integrate plot information
+                movie_title = re.sub(
+                    r"\(\d{4}\)$", "", movie_metadata["title"].iloc[0]
+                ).strip()
                 plot = self.movie_metadata_df[
-                    self.movie_metadata_df["title"]
-                    == movie_metadata["title"].iloc[0]
+                    self.movie_metadata_df["title"] == movie_title
                 ]["overview"].iloc[0]
                 if len(plot) > 0:
                     return f"{CRS_PREFIX} {plot}"
@@ -711,7 +715,7 @@ if __name__ == "__main__":
     recommender = MovieRecommender(
         "data/models/crb_crs_redial/matrix_factorization"
     )
-    context = ["I like romantic movies."]
+    context = ["I like comedies."]
     recommendations = recommender.get_recommendations(context)
     print(recommendations)
     recommender.save("data/models/crb_crs_redial/movie_recommender.pkl")
