@@ -9,6 +9,7 @@ Adapted from original code:
 https://github.com/ahtsham58/CRB-CRS/tree/main
 """
 
+import logging
 import os
 import re
 from typing import Any, Dict, List
@@ -113,9 +114,12 @@ class CRBCRSModel:
         )
 
         # Integrate metadata into the retrieved response
-        response = self.recommender.integrate_domain_metadata(
-            context, response
-        )
+        try:
+            response = self.recommender.integrate_domain_metadata(
+                context, response
+            )
+        except Exception as e:
+            logging.error(f"Error while integrating metadata: {e}")
 
         response = self.retriever.remove_utterance_prefix(response)
         return response
@@ -131,7 +135,7 @@ class CRBCRSModel:
         """
         if self.kg_dataset == "redial":
             return [
-                id.replace("@", "") for id in re.findall(r"@\S+", response)
+                re.sub(r"[@?]", "", id) for id in re.findall(r"@\S+", response)
             ]
         return []
 
