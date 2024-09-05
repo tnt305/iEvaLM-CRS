@@ -1,7 +1,7 @@
 import json
 import sys
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 import torch
 from accelerate import Accelerator
@@ -40,7 +40,9 @@ class BARCOR:
         self.padding = "max_length"
         self.pad_to_multiple_of = 8
 
-        self.accelerator = Accelerator(device_placement=False, mixed_precision="fp16")
+        self.accelerator = Accelerator(
+            device_placement=False, mixed_precision="fp16"
+        )
         self.device = self.accelerator.device
 
         self.rec_model = rec_model
@@ -49,18 +51,22 @@ class BARCOR:
         # conv
         self.resp_max_length = resp_max_length
 
-        self.kg = KGForBART(kg_dataset=self.kg_dataset, debug=self.debug).get_kg_info()
+        self.kg = KGForBART(
+            kg_dataset=self.kg_dataset, debug=self.debug
+        ).get_kg_info()
 
         self.crs_rec_model = BartForSequenceClassification.from_pretrained(
             self.rec_model, num_labels=self.kg["num_entities"]
         ).to(self.device)
-        self.crs_conv_model = AutoModelForSeq2SeqLM.from_pretrained(self.conv_model).to(
-            self.device
-        )
+        self.crs_conv_model = AutoModelForSeq2SeqLM.from_pretrained(
+            self.conv_model
+        ).to(self.device)
         self.crs_conv_model = self.accelerator.prepare(self.crs_conv_model)
 
         self.kg_dataset_path = f"data/{self.kg_dataset}"
-        with open(f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8") as f:
+        with open(
+            f"{self.kg_dataset_path}/entity2id.json", "r", encoding="utf-8"
+        ) as f:
             self.entity2id = json.load(f)
 
     def get_rec(self, conv_dict):
@@ -138,7 +144,9 @@ class BARCOR:
             if not isinstance(v, torch.Tensor):
                 input_dict[k] = torch.as_tensor(v, device=self.device)
 
-        labels = input_dict["labels"].tolist() if "labels" in input_dict else None
+        labels = (
+            input_dict["labels"].tolist() if "labels" in input_dict else None
+        )
         self.crs_rec_model.eval()
         outputs = self.crs_rec_model(**input_dict)
         item_ids = torch.as_tensor(self.kg["item_ids"], device=self.device)
@@ -204,7 +212,9 @@ class BARCOR:
 
         for k, v in input_dict.items():
             if not isinstance(v, torch.Tensor):
-                input_dict[k] = torch.as_tensor(v, device=self.device).unsqueeze(0)
+                input_dict[k] = torch.as_tensor(
+                    v, device=self.device
+                ).unsqueeze(0)
 
         self.crs_conv_model.eval()
 
@@ -237,33 +247,58 @@ class BARCOR:
             for op in options
         ]
         option_scores = outputs.scores[-2][0][option_token_ids]
-        state = torch.as_tensor(state, device=self.device, dtype=option_scores.dtype)
+        state = torch.as_tensor(
+            state, device=self.device, dtype=option_scores.dtype
+        )
         option_scores += state
         option_with_max_score = options[torch.argmax(option_scores)]
 
         return option_with_max_score
 
-    def get_response(self, conv_dict: Dict[str, Any], id2entity: Dict[int, str]) -> str:
+    def get_response(
+        self,
+        conv_dict: Dict[str, Any],
+        id2entity: Dict[int, str],
+        options: Tuple[str, Dict[str, str]],
+        state: List[float],
+    ) -> str:
         """Generates a response given a conversation context.
 
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity id to entity name.
+            options: Prompt with options and dictionary of options.
+            state: State of the option choices.
 
         Returns:
             Generated response.
         """
-        recommended_items, _ = self.get_rec(conv_dict)
-        recommended_items_str = ""
-        for i, item_id in enumerate(recommended_items[0][:3]):
-            recommended_items_str += f"{i+1}: {id2entity[item_id]}\n"
+        generated_inputs, generated_response = self.get_conv(conv_dict)
+        options_letter = list(options[1].keys())
 
-        _, generated_response = self.get_conv(conv_dict)
-
-        generated_response = generated_response.lstrip("System;:")
-        generated_response = generated_response.strip()
-
-        return (
-            f"I would recommend the following items: {recommended_items_str}"
-            f"{generated_response}"
+        # Get the choice between recommend and generate
+        choice = self.get_choice(
+            generated_inputs, options_letter, state, conv_dict
         )
+
+        if choice == options_letter[-1]:
+            # Generate a recommendation
+            recommended_items, _ = self.get_rec(conv_dict)
+            recommended_items_str = ""
+            for i, item_id in enumerate(recommended_items[0][:3]):
+                recommended_items_str += f"{i+1}: {id2entity[item_id]}  \n"
+            response = (
+                "I would recommend the following items:  \n"
+                f"{recommended_items_str}"
+            )
+        else:
+            # Generate a response to ask for preferences. The fallback is to
+            # use the generated response.
+            response = (
+                options[1].get(choice, {}).get("template", generated_response)
+            )
+
+            # Update the state
+            state[options_letter.index(choice)] = -1e5
+
+        return response, state

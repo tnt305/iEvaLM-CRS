@@ -1,6 +1,6 @@
 import json
 import random
-from typing import List, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from rapidfuzz import fuzz, process
@@ -28,7 +28,9 @@ def sample_data(data_list, shot=1, debug=False, number_for_debug=320):
         data_list = data_list[:number_for_debug]
 
     if shot < 1:
-        data_idx = random.sample(range(len(data_list)), int(len(data_list) * shot))
+        data_idx = random.sample(
+            range(len(data_list)), int(len(data_list) * shot)
+        )
         data_list = [data_list[idx] for idx in data_idx]
     elif shot > 1:
         data_idx = range(int(shot))
@@ -54,7 +56,9 @@ def padded_tensor(
     if debug and max_length is not None:
         t = max(t, max_length)
 
-    output = torch.full((n, t), fill_value=pad_id, dtype=torch.long, device=device)
+    output = torch.full(
+        (n, t), fill_value=pad_id, dtype=torch.long, device=device
+    )
 
     for i, (item, length) in enumerate(zip(items, lens)):
         if length == 0:
@@ -73,7 +77,9 @@ class SelfAttention(nn.Module):
     def __init__(self, hidden_size):
         super(SelfAttention, self).__init__()
         self.attn = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1)
+            nn.Linear(hidden_size, hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, 1),
         )
 
     def forward(self, x, mask=None):
@@ -130,6 +136,66 @@ def shift_tokens_right(
 
 # rapidfuzz get entity
 def get_entity(text, entity_list):
-    extractions = process.extract(text, entity_list, scorer=fuzz.WRatio, limit=20)
-    extractions = [extraction[0] for extraction in extractions if extraction[1] >= 90]
+    extractions = process.extract(
+        text, entity_list, scorer=fuzz.WRatio, limit=20
+    )
+    extractions = [
+        extraction[0] for extraction in extractions if extraction[1] >= 90
+    ]
     return extractions
+
+
+def get_options(dataset: str) -> Tuple[str, Dict[str, str]]:
+    """Returns the possible options for a given dataset.
+
+    Args:
+        dataset: The dataset to get options for.
+
+    Raises:
+        ValueError: If the dataset is not supported.
+
+    Returns:
+        A tuple containing the prompt and a dictionary of options.
+    """
+    if "redial" in dataset:
+        instructions = (
+            "To recommend me items that I will accept, you can choose one of "
+            "the following options.\nA: ask my preference for genre\nB: ask my "
+            "preference for actor\nC: ask my preference for director\nD: I can "
+            "directly give recommendations\nPlease enter the option character. "
+            "Please only response a character."
+        )
+        options = {
+            "A": {"attribute": "genre", "template": "What genre do you like?"},
+            "B": {"attribute": "actor", "template": "Which star do you like?"},
+            "C": {
+                "attribute": "director",
+                "template": "Which director do you like?",
+            },
+            "D": {"attribute": "recommend", "template": ""},
+        }
+        return instructions, options
+    elif "opendialkg" in dataset:
+        instructions = (
+            "To recommend me items that I will accept, you can choose one of "
+            "the following options.\nA: ask my preference for genre\nB: ask my "
+            "preference for actor\nC: ask my preference for director\nD: ask "
+            "my preference for writer\nE: I can directly give recommendations"
+            "\nPlease enter the option character. Please only response a "
+            "character."
+        )
+        options = {
+            "A": {"attribute": "genre", "template": "What genre do you like?"},
+            "B": {"attribute": "actor", "template": "Which star do you like?"},
+            "C": {
+                "attribute": "director",
+                "template": "Which director do you like?",
+            },
+            "D": {
+                "attribute": "writer",
+                "template": "Which writer do you like?",
+            },
+        }
+        return instructions, options
+
+    raise ValueError(f"Dataset {dataset} is not supported.")

@@ -44,24 +44,27 @@ Test in the terminal with the following command:
 import requests
 
 url = "http://127.0.0.1:5005/"
+s = requests.Session() 
 
 context = []
 data = {
     "context": context,
-    "message": "Hi I am looking for a movie like Super Troopers (2001)"
+    "message": "Hi I am looking for a movie like Super Troopers (2001)",
 }
 
-response = requests.post(url, json=data)
+response = s.post(url, json=data)
 print(response.status_code)
-print(response.text)
+print(response.json())
 
-context += ["Hi I am looking for a movie like Super Troopers (2001)", response.text]
+response = response.json()
+
+context += ["Hi I am looking for a movie like Super Troopers (2001)", response.get("response")]
 data = {
     "context": context,
-    "message": "I loved Black Panther (2018)"
+    "message": "I love action movies",
 }
 
-response = requests.post(url, json=data)
+response = s.post(url, json=data)
 ```
 
 ## Start Streamlit app
