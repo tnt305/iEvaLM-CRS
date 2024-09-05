@@ -22,6 +22,7 @@ CRS_MODELS = {
     "chatgpt_opendialkg": (
         "data/arena/crs_config/ChatGPT/chatgpt_opendialkg.yaml"
     ),
+    "crbcrs_redial": "data/arena/crs_config/CRB_CRS/crb_crs_redial.yaml",
 }
 
 CONVERSATION_COUNTS = defaultdict(int).fromkeys(CRS_MODELS.keys(), 0)

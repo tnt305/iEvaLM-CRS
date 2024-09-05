@@ -35,6 +35,7 @@ from crs_arena.battle_manager import (
 )
 from crs_arena.crs_fighter import CRSFighter
 from crs_arena.utils import execute_sql_query
+from src.model.crb_crs.recommender import *
 
 # A message is a dictionary with two keys: role and message.
 Message = Dict[str, str]
@@ -207,6 +208,8 @@ st.header(":page_with_curl: Rules")
 st.write(
     "* Chat with each CRS (one after the other) to get movie recommendations "
     "up until you feel statisfied or frustrated.\n"
+    "* Try to send several messages to each CRS to get a better sense of their "
+    "capabilities. Don't quit after the first message!\n"
     "* To finish chatting with a CRS, click on the button corresponding to "
     "your feeling: frustrated or satisfied.\n"
     "* Vote on which CRS you prefer or declare a tie.\n"
