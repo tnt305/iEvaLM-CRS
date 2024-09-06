@@ -1,5 +1,6 @@
 """Utility functions for CRS Arena."""
 
+import asyncio
 import logging
 import os
 import sqlite3
@@ -12,10 +13,14 @@ import openai
 import streamlit as st
 import wget
 import yaml
+from huggingface_hub import HfApi
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.model.crs_model import CRSModel
+
+# Initialize Hugging Face API
+HF_API = HfApi(token=st.secrets.hf.hf_token)
 
 
 @st.cache_resource(show_spinner="Loading CRS...", ttl=timedelta(days=1))
@@ -103,3 +108,36 @@ def download_and_extract_item_embeddings() -> None:
         logging.debug("Item embeddings folder downloaded and extracted.")
     except Exception as e:
         logging.error(f"Error downloading item embeddings folder: {e}")
+
+
+async def upload_conversation_logs_to_hf(
+    conversation_log_file_path: str, repo_filename: str
+) -> None:
+    """Uploads conversation logs to Hugging Face asynchronously.
+
+    Args:
+        conversation_log_file_path: Path to the conversation log file locally.
+        repo_filename: Name of the file in the Hugging Face repository.
+
+    Raises:
+        Exception: If an error occurs during the upload.
+    """
+    logging.debug(
+        "Uploading conversation logs to Hugging Face: "
+        f"{conversation_log_file_path}."
+    )
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: HF_API.upload_file(
+                path_or_fileobj=conversation_log_file_path,
+                path_in_repo=repo_filename,
+                repo_id=st.secrets.hf.dataset_repo,
+                repo_type="dataset",
+            ),
+        )
+        logging.debug("Conversation logs uploaded to Hugging Face.")
+    except Exception as e:
+        logging.error(
+            f"Error uploading conversation logs to Hugging Face: {e}"
+        )

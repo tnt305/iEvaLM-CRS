@@ -19,9 +19,11 @@ The app is composed of four sections:
 4. Feedback
 """
 
+import asyncio
 import json
 import logging
 import os
+import threading
 import time
 from copy import deepcopy
 from typing import Dict, List
@@ -37,6 +39,7 @@ from utils import (
     download_and_extract_item_embeddings,
     download_and_extract_models,
     execute_sql_query,
+    upload_conversation_logs_to_hf,
 )
 
 from src.model.crb_crs.recommender import *
@@ -133,13 +136,21 @@ def end_conversation(crs: CRSFighter, sentiment: str) -> None:
     messages.append({"role": "metadata", "sentiment": sentiment})
     user_id = st.session_state["user_id"]
     logger.info(f"User {user_id} ended conversation with {crs.name}.")
-    with open(
-        os.path.join(CONVERSATION_LOG_DIR, f"{user_id}_{crs.name}.json"), "a"
-    ) as f:
+    log_file_path = os.path.join(
+        CONVERSATION_LOG_DIR, f"{user_id}_{crs.name}.json"
+    )
+    with open(log_file_path, "a") as f:
         json.dump(messages, f)
 
     # Update the conversation count
     CONVERSATION_COUNTS[crs.name] += 1
+
+    # Asynchronously save the conversation logs to Hugging Face Hub
+    asyncio.run(
+        upload_conversation_logs_to_hf(
+            log_file_path, f"conversation_logs/{user_id}_{crs.name}.json"
+        )
+    )
 
     if crs.fighter_id == 1:
         # Disable the chat interface for the first CRS
