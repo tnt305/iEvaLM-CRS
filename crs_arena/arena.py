@@ -53,8 +53,10 @@ logger.setLevel(logging.INFO)
 
 # Download models and data externally stored if not already downloaded
 if not os.path.exists("data/models"):
+    logger.info("Downloading models...")
     download_and_extract_models()
 if not os.path.exists("data/embed_items"):
+    logger.info("Downloading item embeddings...")
     download_and_extract_item_embeddings()
 
 # Create the conversation logs directory
