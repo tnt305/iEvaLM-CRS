@@ -72,14 +72,17 @@ def download_and_extract_models() -> None:
     models_url = st.secrets.files.models_folder_url
     models_targz = "models.tar.gz"
     models_folder = "data/models/"
-    wget.download(models_url, models_targz)
+    try:
+        wget.download(models_url, models_targz)
 
-    logging.debug("Extracting models folder.")
-    with tarfile.open(models_targz, "r:gz") as tar:
-        tar.extractall(models_folder)
+        logging.debug("Extracting models folder.")
+        with tarfile.open(models_targz, "r:gz") as tar:
+            tar.extractall(models_folder)
 
-    os.remove(models_targz)
-    logging.debug("Models folder downloaded and extracted.")
+        os.remove(models_targz)
+        logging.debug("Models folder downloaded and extracted.")
+    except Exception as e:
+        logging.error(f"Error downloading models folder: {e}")
 
 
 def download_and_extract_item_embeddings() -> None:
@@ -88,11 +91,15 @@ def download_and_extract_item_embeddings() -> None:
     item_embeddings_url = st.secrets.files.item_embeddings_url
     item_embeddings_tarbz = "item_embeddings.tar.bz2"
     item_embeddings_folder = "data/"
-    wget.download(item_embeddings_url, item_embeddings_tarbz)
 
-    logging.debug("Extracting item embeddings folder.")
-    with tarfile.open(item_embeddings_tarbz, "r:bz2") as tar:
-        tar.extractall(item_embeddings_folder)
+    try:
+        wget.download(item_embeddings_url, item_embeddings_tarbz)
 
-    os.remove(item_embeddings_tarbz)
-    logging.debug("Item embeddings folder downloaded and extracted.")
+        logging.debug("Extracting item embeddings folder.")
+        with tarfile.open(item_embeddings_tarbz, "r:bz2") as tar:
+            tar.extractall(item_embeddings_folder)
+
+        os.remove(item_embeddings_tarbz)
+        logging.debug("Item embeddings folder downloaded and extracted.")
+    except Exception as e:
+        logging.error(f"Error downloading item embeddings folder: {e}")
