@@ -171,6 +171,9 @@ def get_crs_response(crs: CRSFighter, message: str):
     Yields:
         Words from the CRS response.
     """
+    history = deepcopy(st.session_state[f"messages_{crs.fighter_id}"])
+    history = history[:-1]  # Remove the last message (user's message)
+
     response, state = crs.reply(
         input_message=message,
         history=st.session_state[f"messages_{crs.fighter_id}"],
@@ -207,7 +210,7 @@ def feedback_dialog(row_id: int) -> None:
 st.set_page_config(page_title="CRS Arena", layout="wide")
 
 # Cache some CRS fighters at startup
-cache_fighters(n=4)
+cache_fighters(n=2)
 
 # Battle setup
 if "user_id" not in st.session_state:
@@ -275,15 +278,16 @@ with col_crs1:
             # Display the user's message
             messages_crs1.chat_message("user").write(prompt1)
 
+            # Add user's message to chat history
+            st.session_state["messages_1"].append(
+                {"role": "user", "message": prompt1}
+            )
             # Get the CRS response
             response_crs1 = messages_crs1.chat_message(
                 "assistant"
             ).write_stream(get_crs_response(st.session_state["crs1"], prompt1))
 
-            # Add turn to chat history
-            st.session_state["messages_1"].append(
-                {"role": "user", "message": prompt1}
-            )
+            # Add CRS response to chat history
             st.session_state["messages_1"].append(
                 {"role": "assistant", "message": response_crs1}
             )
@@ -331,15 +335,17 @@ with col_crs2:
             # Display the user's message
             messages_crs2.chat_message("user").write(prompt2)
 
+            # Add user's message to chat history
+            st.session_state["messages_2"].append(
+                {"role": "user", "message": prompt2}
+            )
+
             # Get the CRS response
             response_crs2 = messages_crs2.chat_message(
                 "assistant"
             ).write_stream(get_crs_response(st.session_state["crs2"], prompt2))
 
-            # Add turn to chat history
-            st.session_state["messages_2"].append(
-                {"role": "user", "message": prompt2}
-            )
+            # Add CRS response to chat history
             st.session_state["messages_2"].append(
                 {"role": "assistant", "message": response_crs2}
             )
