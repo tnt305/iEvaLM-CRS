@@ -294,6 +294,12 @@ class KBRD:
     ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
+        The method is based on the logic of the ask mode (i.e., see
+        `scripts/ask.py`). It consists of two steps: (1) choose to either
+        recommend items or generate a response, and (2) execute the chosen
+        step. Slightly deviates from the original implementation by not using
+        templates.
+
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity id to entity name.
@@ -320,14 +326,16 @@ class KBRD:
                 f"{recommended_items_str}"
             )
         else:
-            # Generate a response to ask for preferences. The fallback is to
-            # use the generated response.
-            response = (
-                options[1].get(choice, {}).get("template", generated_response)
-            )
+            # Original : Generate a response to ask for preferences. The
+            # fallback is to use the generated response.
+            # response = (
+            #     options[1].get(choice, {}).get("template", generated_response)
+            # )
+            response = generated_response
 
-            # Update the state
-            state[options_letter.index(choice)] = -1e5
+        # Update the state. Hack: penalize the choice to reduce the
+        # likelihood of selecting the same choice again
+        state[options_letter.index(choice)] += -1e5
 
         return response, state
 

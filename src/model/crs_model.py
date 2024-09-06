@@ -41,11 +41,6 @@ class CRSModel:
     ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
-        The method is based on the logic of the ask mode (i.e., see
-        `scripts/ask.py`). It consists of two steps: (1) choose to either
-        recommend items or generate a response, and (2) execute the chosen
-        step.
-
         Args:
             conv_dict: Conversation context.
             id2entity: Mapping from entity id to entity name.

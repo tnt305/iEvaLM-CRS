@@ -307,13 +307,15 @@ class CHATGPT:
                 f"{recommended_items_str}"
             )
         else:
-            # Generate a response to ask for preferences. The fallback is to
-            # use the generated response.
-            response = (
-                options[1].get(choice, {}).get("template", generated_response)
-            )
+            # Original : Generate a response to ask for preferences. The
+            # fallback is to use the generated response.
+            # response = (
+            #     options[1].get(choice, {}).get("template", generated_response)
+            # )
+            response = generated_response
 
-            # Update the state
-            state[options_letter.index(choice)] = -1e5
+        # Update the state. Hack: penalize the choice to reduce the
+        # likelihood of selecting the same choice again
+        state[options_letter.index(choice)] = -1e5
 
         return response, state
