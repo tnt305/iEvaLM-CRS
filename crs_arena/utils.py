@@ -10,10 +10,12 @@ from datetime import timedelta
 from typing import Any, Dict, List
 
 import openai
+import pandas as pd
 import streamlit as st
 import wget
 import yaml
 from huggingface_hub import HfApi
+from streamlit_gsheets import GSheetsConnection
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -141,3 +143,30 @@ async def upload_conversation_logs_to_hf(
         logging.error(
             f"Error uploading conversation logs to Hugging Face: {e}"
         )
+
+
+async def upload_feedback_to_gsheet(
+    row: Dict[str, str], worksheet: str = "votes"
+) -> None:
+    """Uploads feedback to Google Sheets asynchronously.
+
+    Args:
+        row: Row to upload to the worksheet.
+        worksheet: Name of the worksheet to upload the feedback to.
+
+    Raises:
+        Exception: If an error occurs during the upload.
+    """
+    logging.debug("Uploading feedback to Google Sheets.")
+    try:
+        gs_connection = st.connection("gsheets", type=GSheetsConnection)
+        df = gs_connection.read(worksheet=worksheet)
+        if df[df["id"] == row["id"]].empty:
+            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        else:
+            # Add feedback to existing row
+            df.loc[df["id"] == row["id"], "feedback"] = row["feedback"]
+        gs_connection.update(data=df, worksheet=worksheet)
+        logging.debug("Feedback uploaded to Google Sheets.")
+    except Exception as e:
+        logging.error(f"Error uploading feedback to Google Sheets: {e}")

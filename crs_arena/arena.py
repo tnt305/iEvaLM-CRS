@@ -26,6 +26,7 @@ import os
 import threading
 import time
 from copy import deepcopy
+from datetime import datetime
 from typing import Dict, List
 
 import streamlit as st
@@ -38,8 +39,8 @@ from crs_fighter import CRSFighter
 from utils import (
     download_and_extract_item_embeddings,
     download_and_extract_models,
-    execute_sql_query,
     upload_conversation_logs_to_hf,
+    upload_feedback_to_gsheet,
 )
 
 from src.model.crb_crs.recommender import *
@@ -66,20 +67,6 @@ if not os.path.exists("data/embed_items"):
 CONVERSATION_LOG_DIR = "data/arena/conversation_logs/"
 os.makedirs(CONVERSATION_LOG_DIR, exist_ok=True)
 
-# Database setup
-# Create the votes table if it doesn't exist
-execute_sql_query(
-    "CREATE TABLE IF NOT EXISTS votes ("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "user_id TEXT, "
-    "crs1 TEXT, "
-    "crs2 TEXT, "
-    "vote TEXT, "
-    "feedback TEXT"
-    ");",
-    {},
-)
-
 
 # Callbacks
 def record_vote(vote: str) -> None:
@@ -91,17 +78,19 @@ def record_vote(vote: str) -> None:
     user_id = st.session_state["user_id"]
     crs1_model: CRSFighter = st.session_state["crs1"]
     crs2_model: CRSFighter = st.session_state["crs2"]
-    r = execute_sql_query(
-        "INSERT INTO votes (user_id, crs1, crs2, vote) VALUES "
-        "(:user_id, :crs1, :crs2, :vote) RETURNING id;",
-        {
-            "user_id": user_id,
-            "crs1": crs1_model.name,
-            "crs2": crs2_model.name,
-            "vote": vote,
-        },
+    last_row_id = str(datetime.now())
+    asyncio.run(
+        upload_feedback_to_gsheet(
+            {
+                "id": last_row_id,
+                "user_id": user_id,
+                "crs1": crs1_model.name,
+                "crs2": crs2_model.name,
+                "vote": vote,
+            },
+            worksheet="votes",
+        )
     )
-    last_row_id = r[0][0]
     feedback_dialog(row_id=last_row_id)
 
 
@@ -114,9 +103,10 @@ def record_feedback(feedback: str, row_id: int) -> None:
         crs_models: Tuple of CRS model names.
         user_id: Unique user ID.
     """
-    execute_sql_query(
-        "UPDATE votes SET feedback = :feedback WHERE id = :row_id;",
-        {"feedback": feedback, "row_id": row_id},
+    asyncio.run(
+        upload_feedback_to_gsheet(
+            {"id": row_id, "feedback": feedback}, "feedback"
+        )
     )
 
 
