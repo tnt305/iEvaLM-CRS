@@ -8,7 +8,7 @@ import uuid
 from collections import defaultdict
 from typing import Tuple
 
-from crs_arena.crs_fighter import CRSFighter
+from crs_fighter import CRSFighter
 
 # CRS models with their configuration files.
 CRS_MODELS = {

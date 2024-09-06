@@ -27,14 +27,14 @@ from copy import deepcopy
 from typing import Dict, List
 
 import streamlit as st
-
-from crs_arena.battle_manager import (
+from battle_manager import (
     CONVERSATION_COUNTS,
     get_crs_fighters,
     get_unique_user_id,
 )
-from crs_arena.crs_fighter import CRSFighter
-from crs_arena.utils import execute_sql_query
+from crs_fighter import CRSFighter
+from utils import execute_sql_query
+
 from src.model.crb_crs.recommender import *
 
 # A message is a dictionary with two keys: role and message.

@@ -3,12 +3,15 @@
 import logging
 import os
 import sqlite3
+import sys
 from datetime import timedelta
 from typing import Any, Dict, List
 
 import openai
 import streamlit as st
 import yaml
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.model.crs_model import CRSModel
 

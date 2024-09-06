@@ -8,11 +8,12 @@ model name and configuration file.
 import json
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from crs_arena.utils import get_crs_model
+from utils import get_crs_model
+
 from src.model.utils import get_entity, get_options
 
 if TYPE_CHECKING:
-    from crs_arena.battle_manager import Message
+    from battle_manager import Message
 
 
 class CRSFighter:
