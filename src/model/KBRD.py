@@ -67,7 +67,9 @@ class KBRD:
             self.entity2id = json.load(f)
 
         # Initialize the accelerator.
-        self.accelerator = Accelerator(device_placement=False)
+        self.accelerator = Accelerator(
+            device_placement=False, mixed_precision="fp16"
+        )
         self.device = self.accelerator.device
 
         self.kg = KGForKBRD(

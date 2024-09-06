@@ -39,7 +39,9 @@ class UNICRS:
 
         self.debug = debug
 
-        self.accelerator = Accelerator(device_placement=False)
+        self.accelerator = Accelerator(
+            device_placement=False, mixed_precision="fp16"
+        )
         self.device = self.accelerator.device
 
         self.context_max_length = context_max_length

@@ -9,6 +9,7 @@ from collections import defaultdict
 from typing import Tuple
 
 from crs_fighter import CRSFighter
+from utils import get_crs_model
 
 # CRS models with their configuration files.
 CRS_MODELS = {
@@ -50,3 +51,9 @@ def get_unique_user_id() -> str:
         Unique user id.
     """
     return str(uuid.uuid4())
+
+
+def cache_all_fighters() -> None:
+    """Caches all CRS fighters."""
+    for model_name, config_path in CRS_MODELS.items():
+        get_crs_model(model_name, config_path)
