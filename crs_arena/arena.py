@@ -33,7 +33,11 @@ from battle_manager import (
     get_unique_user_id,
 )
 from crs_fighter import CRSFighter
-from utils import execute_sql_query
+from utils import (
+    download_and_extract_item_embeddings,
+    download_and_extract_models,
+    execute_sql_query,
+)
 
 from src.model.crb_crs.recommender import *
 
@@ -47,9 +51,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Download models and data externally stored if not already downloaded
+if not os.path.exists("data/models"):
+    download_and_extract_models()
+if not os.path.exists("data/embed_items"):
+    download_and_extract_item_embeddings()
+
+# Create the conversation logs directory
 CONVERSATION_LOG_DIR = "data/arena/conversation_logs/"
 os.makedirs(CONVERSATION_LOG_DIR, exist_ok=True)
-
 
 # Database setup
 # Create the votes table if it doesn't exist

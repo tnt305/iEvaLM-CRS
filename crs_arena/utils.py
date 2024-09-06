@@ -4,11 +4,13 @@ import logging
 import os
 import sqlite3
 import sys
+import tarfile
 from datetime import timedelta
 from typing import Any, Dict, List
 
 import openai
 import streamlit as st
+import wget
 import yaml
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -62,3 +64,35 @@ def execute_sql_query(query: str, params: Dict[str, str]) -> List[Any]:
     output = cursor.fetchall()
     connection.commit()
     return output
+
+
+def download_and_extract_models() -> None:
+    """Downloads the models folder from the server and extracts it."""
+    logging.debug("Downloading models folder.")
+    models_url = st.secrets.files.models_folder_url
+    models_targz = "models.tar.gz"
+    models_folder = "data/models/"
+    wget.download(models_url, models_targz)
+
+    logging.debug("Extracting models folder.")
+    with tarfile.open(models_targz, "r:gz") as tar:
+        tar.extractall(models_folder)
+
+    os.remove(models_targz)
+    logging.debug("Models folder downloaded and extracted.")
+
+
+def download_and_extract_item_embeddings() -> None:
+    """Downloads the item embeddings folder from the server and extracts it."""
+    logging.debug("Downloading item embeddings folder.")
+    item_embeddings_url = st.secrets.files.item_embeddings_url
+    item_embeddings_tarbz = "item_embeddings.tar.bz2"
+    item_embeddings_folder = "data/"
+    wget.download(item_embeddings_url, item_embeddings_tarbz)
+
+    logging.debug("Extracting item embeddings folder.")
+    with tarfile.open(item_embeddings_tarbz, "r:bz2") as tar:
+        tar.extractall(item_embeddings_folder)
+
+    os.remove(item_embeddings_tarbz)
+    logging.debug("Item embeddings folder downloaded and extracted.")

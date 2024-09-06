@@ -152,7 +152,7 @@ class CHATGPT:
             if info["name"] in self.entity2id:
                 self.id2entityid[id] = self.entity2id[info["name"]]
 
-        self.item_embedding_path = f"data/embed_item/{self.kg_dataset}"
+        self.item_embedding_path = f"data/embed_items/{self.kg_dataset}"
 
         item_emb_list = []
         id2item_id = []
