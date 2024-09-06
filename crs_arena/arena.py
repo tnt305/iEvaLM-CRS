@@ -157,10 +157,12 @@ def get_crs_response(crs: CRSFighter, message: str):
     Yields:
         Words from the CRS response.
     """
-    response = crs.reply(
+    response, state = crs.reply(
         input_message=message,
         history=st.session_state[f"messages_{crs.fighter_id}"],
+        options_state=st.session_state.get(f"state_{crs.fighter_id}", []),
     )
+    st.session_state[f"state_{crs.fighter_id}"] = state
     # response = "CRS response for testing purposes."
     for word in response.split():
         yield f"{word} "
@@ -223,8 +225,10 @@ st.write("Let's start the battle!")
 # Initialize the chat messages
 if "messages_1" not in st.session_state:
     st.session_state["messages_1"] = []
+    st.session_state["state_1"] = None
 if "messages_2" not in st.session_state:
     st.session_state["messages_2"] = []
+    st.session_state["state_2"] = None
 
 if "crs1_enabled" not in st.session_state:
     st.session_state["crs1_enabled"] = True

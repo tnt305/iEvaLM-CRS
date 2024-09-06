@@ -6,10 +6,10 @@ model name and configuration file.
 """
 
 import json
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from crs_arena.utils import get_crs_model
-from src.model.utils import get_entity
+from src.model.utils import get_entity, get_options
 
 if TYPE_CHECKING:
     from crs_arena.battle_manager import Message
@@ -39,8 +39,11 @@ class CRSFighter:
         # Load entity data
         self._load_entity_data()
 
-        # Generation arguments
-        self.response_generation_args = self._get_response_generation_args()
+        # Load options
+        self.options = get_options(self.model.crs_model.kg_dataset)
+
+        # Generation arguments. Not used for now.
+        self.response_generation_args = {}
 
     def _load_entity_data(self):
         """Loads entity data."""
@@ -53,18 +56,6 @@ class CRSFighter:
 
         self.id2entity = {int(v): k for k, v in self.entity2id.items()}
         self.entity_list = list(self.entity2id.keys())
-
-    def _get_response_generation_args(self) -> Dict[str, Any]:
-        """Returns response generation arguments."""
-        if "unicrs" in self.name:
-            return {
-                "movie_token": (
-                    "<movie>"
-                    if self.model.crs_model.kg_dataset.startswith("redial")
-                    else "<mask>"
-                ),
-            }
-        return {}
 
     def _process_user_input(
         self, input_message: str, history: List["Message"]
@@ -100,23 +91,34 @@ class CRSFighter:
             "template": [],
         }
 
-    def reply(self, input_message: str, history: List["Message"]) -> str:
+    def reply(
+        self,
+        input_message: str,
+        history: List["Message"],
+        options_state: Optional[List[float]],
+    ) -> Tuple[str, List[float]]:
         """Generates a reply to the user input.
 
         Args:
             input_message: User input message.
             history: Conversation history.
+            options_state: State of the options.
 
         Returns:
-            Generated response.
+            Generated response and updated state.
         """
         # Process conversation to create conversation dictionary
         conversation_dict = self._process_user_input(input_message, history)
 
+        if options_state is None or len(options_state) != len(self.options[1]):
+            options_state = [0.0] * len(self.options[1])
+
         # Get response
-        response = self.model.get_response(
+        response, state = self.model.get_response(
             conversation_dict,
             self.id2entity,
+            self.options,
+            options_state,
             **self.response_generation_args,
         )
-        return response
+        return response, state
