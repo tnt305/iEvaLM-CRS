@@ -32,7 +32,7 @@ from typing import Dict, List
 import streamlit as st
 from battle_manager import (
     CONVERSATION_COUNTS,
-    cache_all_fighters,
+    cache_fighters,
     get_crs_fighters,
     get_unique_user_id,
 )
@@ -206,9 +206,8 @@ def feedback_dialog(row_id: int) -> None:
 # Streamlit app
 st.set_page_config(page_title="CRS Arena", layout="wide")
 
-# Cache all CRS fighters
-logger.info("Caching all CRS fighters...")
-cache_all_fighters()
+# Cache some CRS fighters at startup
+cache_fighters(n=4)
 
 # Battle setup
 if "user_id" not in st.session_state:

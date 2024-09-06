@@ -25,7 +25,7 @@ from src.model.crs_model import CRSModel
 HF_API = HfApi(token=st.secrets.hf.hf_token)
 
 
-@st.cache_resource(show_spinner="Loading CRS...", ttl=timedelta(days=1))
+@st.cache_resource(show_spinner="Loading CRS...", max_entries=5)
 def get_crs_model(model_name: str, model_config_file: str) -> CRSModel:
     """Returns a CRS model.
 

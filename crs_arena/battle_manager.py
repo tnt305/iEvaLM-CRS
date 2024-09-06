@@ -4,9 +4,10 @@ Contains helper functions to select fighters for a battle and generate
 unique user ids.
 """
 
+import logging
 import uuid
 from collections import defaultdict
-from typing import Tuple
+from typing import Optional, Tuple
 
 from crs_fighter import CRSFighter
 from utils import get_crs_model
@@ -53,7 +54,14 @@ def get_unique_user_id() -> str:
     return str(uuid.uuid4())
 
 
-def cache_all_fighters() -> None:
-    """Caches all CRS fighters."""
-    for model_name, config_path in CRS_MODELS.items():
+def cache_fighters(n: Optional[int] = None) -> None:
+    """Caches n CRS fighters.
+
+    Args:
+        n: Number of fighters to cache. If None, all fighters are cached.
+    """
+    logging.info(f"Caching {n} CRS fighters.")
+    for i, (model_name, config_path) in enumerate(CRS_MODELS.items()):
         get_crs_model(model_name, config_path)
+        if n is not None and i == n:
+            break
