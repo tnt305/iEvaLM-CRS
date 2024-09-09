@@ -5,12 +5,11 @@ conversational recommender systems (CRSs) and vote on which one they prefer.
 All the conversations are recorded and saved for future analysis. When the user
 arrives on the app, they are assigned a unique ID. Then, two CRSs are chosen
 for the battle depending on the number of conversations already recorded (i.e.,
-the CRSs with the least number of conversations are chosen). The user is given
-a few constraints on the items they are looking for, after they interact with
-the CRSs one after the other. The user can then vote on which CRS they prefer,
-upon voting a pop-up will appear giving the user the option to provide a more
-detailed feedback. Once the vote is submitted, all data is logged and the app
-restarts for a new battle.
+the CRSs with the least number of conversations are chosen). The user interacts
+with the CRSs one after the other. The user can then vote on which CRS they
+prefer, upon voting a pop-up will appear giving the user the option to provide
+a more detailed feedback. Once the vote is submitted, all data is logged and
+the app restarts for a new battle.
 
 The app is composed of four sections:
 1. Title/Introduction
