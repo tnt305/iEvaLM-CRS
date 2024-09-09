@@ -295,7 +295,8 @@ class BARCOR:
             # response = (
             #     options[1].get(choice, {}).get("template", generated_response)
             # )
-            response = generated_response
+            generated_response = generated_response.lstrip("System;:")
+            response = generated_response.strip()
 
         # Update the state. Hack: penalize the choice to reduce the
         # likelihood of selecting the same choice again

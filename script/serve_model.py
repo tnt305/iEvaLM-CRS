@@ -301,6 +301,17 @@ if __name__ == "__main__":
     crs_model = CRSModel(crs_model=args.crs_model, **model_args)
     logger.info(f"Loaded {args.crs_model} model.")
 
+    # Generation arguments
+    response_generation_args = {}
+    if args.crs_model == "unicrs":
+        response_generation_args = {
+            "movie_token": (
+                "<movie>" if args.kg_dataset.startswith("redial") else "<mask>"
+            ),
+        }
+
     # Start CRS Flask server
-    crs_server = CRSFlaskServer(crs_model, args.kg_dataset)
+    crs_server = CRSFlaskServer(
+        crs_model, args.kg_dataset, response_generation_args
+    )
     crs_server.start(args.host, args.port)

@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple
@@ -449,6 +450,7 @@ class UNICRS:
         id2entity: Dict[int, str],
         options: Tuple[str, Dict[str, str]],
         state: List[float],
+        movie_token: str = "<mask>",
     ) -> Tuple[str, List[float]]:
         """Generates a response given a conversation context.
 
@@ -463,6 +465,7 @@ class UNICRS:
             id2entity: Mapping from entity ID to entity name.
             options: Prompt with options and dictionary of options.
             state: State of the option choices.
+            movie_token: Mask token for the movie. Defaults to "<mask>".
 
         Returns:
             Generated response and updated state.
@@ -473,9 +476,10 @@ class UNICRS:
         # Get the choice between recommend and generate
         choice = self.get_choice(generated_inputs, options_letter, state)
 
+        # Generate recommendations
+        recommended_items, _ = self.get_rec(conv_dict)
+
         if choice == options_letter[-1]:
-            # Generate a recommendation
-            recommended_items, _ = self.get_rec(conv_dict)
             recommended_items_str = ""
             for i, item_id in enumerate(recommended_items[0][:3]):
                 recommended_items_str += f"{i+1}: {id2entity[item_id]}  \n"
@@ -489,7 +493,20 @@ class UNICRS:
             # response = (
             #     options[1].get(choice, {}).get("template", generated_response)
             # )
-            response = generated_response
+            generated_response = generated_response[
+                generated_response.rfind("System:") + len("System:") + 1 :
+            ]
+            for i in range(str.count(generated_response, movie_token)):
+                try:
+                    generated_response = generated_response.replace(
+                        movie_token, id2entity[recommended_items[i]], 1
+                    )
+                except IndexError as e:
+                    logging.error(e)
+                    generated_response = generated_response.replace(
+                        movie_token, "", 1
+                    )
+            response = generated_response.strip()
 
         # Update the state. Hack: penalize the choice to reduce the
         # likelihood of selecting the same choice again

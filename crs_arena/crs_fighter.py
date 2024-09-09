@@ -43,8 +43,18 @@ class CRSFighter:
         # Load options
         self.options = get_options(self.model.crs_model.kg_dataset)
 
-        # Generation arguments. Not used for now.
+        # Generation arguments.
         self.response_generation_args = {}
+        if self.name.split("_")[0] == "unicrs":
+            self.response_generation_args.update(
+                {
+                    "movie_token": (
+                        "<movie>"
+                        if self.model.crs_model.kg_dataset.startswith("redial")
+                        else "<mask>"
+                    ),
+                }
+            )
 
     def _load_entity_data(self):
         """Loads entity data."""
