@@ -257,7 +257,7 @@ def get_crs_response(crs: CRSFighter, message: str):
     return response
 
 
-@st.dialog("Your vote has been submitted!")
+@st.dialog("Your vote has been submitted! Thank you!")
 def feedback_dialog(row_id: int) -> None:
     """Pop-up dialog to provide feedback after voting.
 
@@ -378,4 +378,11 @@ st.write(
     "Please do not upload any private information in the chat. The service "
     "collects the chat data and the user's vote, which may be released under a "
     "Creative Commons Attribution (CC-BY) or a similar license."
+)
+
+# Contact information
+st.header("Contact Information")
+st.write(
+    "For any questions, concerns, feedback, or bug reports, please contact "
+    "Nolwenn Bernard at <nolwenn.m.bernard@uis.no>."
 )
