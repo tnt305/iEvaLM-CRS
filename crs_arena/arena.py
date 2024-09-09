@@ -36,6 +36,7 @@ from battle_manager import (
     get_unique_user_id,
 )
 from crs_fighter import CRSFighter
+from streamlit_lottie import st_lottie_spinner
 from utils import (
     download_and_extract_item_embeddings,
     download_and_extract_models,
@@ -66,6 +67,8 @@ if not os.path.exists("data/embed_items"):
 # Create the conversation logs directory
 CONVERSATION_LOG_DIR = "data/arena/conversation_logs/"
 os.makedirs(CONVERSATION_LOG_DIR, exist_ok=True)
+
+TYPING_PLACEHOLDER_JSON = json.load(open("asset/Typing_animation.json", "r"))
 
 
 # Callbacks
@@ -165,7 +168,6 @@ def chat_col(crs_id: int, color: str):
     """
     with st.container(border=True):
         st.write(f":{color}_circle: CRS {crs_id}")
-        # Display the chat history
         messages_crs = st.container(height=350, border=False)
         for message in st.session_state[f"messages_{crs_id}"]:
             messages_crs.chat_message(message["role"]).write(
@@ -183,15 +185,22 @@ def chat_col(crs_id: int, color: str):
             st.session_state[f"messages_{crs_id}"].append(
                 {"role": "user", "message": prompt}
             )
-            # Get the CRS response
-            response_crs = messages_crs.chat_message("assistant").write_stream(
-                get_crs_response(st.session_state[f"crs{crs_id}"], prompt)
-            )
 
-            # Add CRS response to chat history
-            st.session_state[f"messages_{crs_id}"].append(
-                {"role": "assistant", "message": response_crs}
-            )
+            crs_message = messages_crs.chat_message("assistant").empty()
+            with crs_message:
+                # Placeholder for the CRS response
+                with st_lottie_spinner(
+                    TYPING_PLACEHOLDER_JSON, height=40, width=40
+                ):
+                    response_crs = get_crs_response(
+                        st.session_state[f"crs{crs_id}"], prompt
+                    )
+                    # Add CRS response to chat history
+                    st.session_state[f"messages_{crs_id}"].append(
+                        {"role": "assistant", "message": response_crs}
+                    )
+                # Display the CRS response
+                crs_message.write(response_crs)
 
         frustrated_col, satisfied_col = st.columns(2)
         if frustrated_col.button(
@@ -242,9 +251,11 @@ def get_crs_response(crs: CRSFighter, message: str):
         options_state=st.session_state.get(f"state_{crs.fighter_id}", []),
     )
     st.session_state[f"state_{crs.fighter_id}"] = state
-    for word in response.split():
-        yield f"{word} "
-        time.sleep(0.05)
+    time.sleep(5)
+    # for word in response.split():
+    #     yield f"{word} "
+    #     time.sleep(0.05)
+    return response
 
 
 @st.dialog("Your vote has been submitted!")
