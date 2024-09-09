@@ -101,4 +101,4 @@ hf_token = "{YOUR_HF_TOKEN}"
 {GOOGLE_SHEET_CONNECTION_PARAMS}
 ```
 
-Refer to the [documentation of Streamlit GSheetsConnection](https://github.com/streamlit/gsheets-connection) for the `GOOGLE_SHEET_CONNECTION_PARAMS`. :warning: You need a private Google Sheet to store the user votes and feedback.
+Refer to the [documentation of Streamlit GSheetsConnection](https://github.com/streamlit/gsheets-connection) for the `{GOOGLE_SHEET_CONNECTION_PARAMS}`. :warning: You need a private Google Sheet to store the user votes and feedback.
