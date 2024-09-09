@@ -23,7 +23,6 @@ import asyncio
 import json
 import logging
 import os
-import threading
 import time
 from copy import deepcopy
 from datetime import datetime
@@ -155,7 +154,70 @@ def end_conversation(crs: CRSFighter, sentiment: str) -> None:
         st.session_state["vote_enabled"] = True
         # Scroll to the voting section
 
-    st.rerun()
+
+@st.fragment
+def chat_col(crs_id: int, color: str):
+    """Chat column for the CRS model.
+
+    Args:
+        crs_id: CRS model ID (either 1 or 2).
+        color: Color of the CRS model (red or large_blue).
+    """
+    with st.container(border=True):
+        st.write(f":{color}_circle: CRS {crs_id}")
+        # Display the chat history
+        messages_crs = st.container(height=350, border=False)
+        for message in st.session_state[f"messages_{crs_id}"]:
+            messages_crs.chat_message(message["role"]).write(
+                message["message"]
+            )
+
+        if prompt := st.chat_input(
+            f"Send a message to CRS {crs_id}",
+            key=f"prompt_crs{crs_id}",
+            disabled=not st.session_state[f"crs{crs_id}_enabled"],
+        ):
+            # Display the user's message
+            messages_crs.chat_message("user").write(prompt)
+            # Add user's message to chat history
+            st.session_state[f"messages_{crs_id}"].append(
+                {"role": "user", "message": prompt}
+            )
+            # Get the CRS response
+            response_crs = messages_crs.chat_message("assistant").write_stream(
+                get_crs_response(st.session_state[f"crs{crs_id}"], prompt)
+            )
+
+            # Add CRS response to chat history
+            st.session_state[f"messages_{crs_id}"].append(
+                {"role": "assistant", "message": response_crs}
+            )
+
+        frustrated_col, satisfied_col = st.columns(2)
+        if frustrated_col.button(
+            ":rage: Frustrated",
+            use_container_width=True,
+            key=f"end_frustated_crs{crs_id}",
+            on_click=end_conversation,
+            kwargs={
+                "crs": st.session_state[f"crs{crs_id}"],
+                "sentiment": "frustrated",
+            },
+            disabled=not st.session_state[f"crs{crs_id}_enabled"],
+        ):
+            st.rerun()
+        if satisfied_col.button(
+            ":heavy_check_mark: Satisfied",
+            use_container_width=True,
+            key=f"end_satisfied_crs{crs_id}",
+            on_click=end_conversation,
+            kwargs={
+                "crs": st.session_state[f"crs{crs_id}"],
+                "sentiment": "satisfied",
+            },
+            disabled=not st.session_state[f"crs{crs_id}_enabled"],
+        ):
+            st.rerun()
 
 
 def get_crs_response(crs: CRSFighter, message: str):
@@ -180,7 +242,6 @@ def get_crs_response(crs: CRSFighter, message: str):
         options_state=st.session_state.get(f"state_{crs.fighter_id}", []),
     )
     st.session_state[f"state_{crs.fighter_id}"] = state
-    # response = "CRS response for testing purposes."
     for word in response.split():
         yield f"{word} "
         time.sleep(0.05)
@@ -261,118 +322,13 @@ col_crs1, col_crs2 = st.columns(2)
 
 # CRS 1
 with col_crs1:
-    with st.container(border=True):
-        st.write(":red_circle: CRS 1")
-        # Display the chat history
-        messages_crs1 = st.container(height=350, border=False)
-        for message in st.session_state["messages_1"]:
-            messages_crs1.chat_message(message["role"]).write(
-                message["message"]
-            )
+    chat_col(1, "red")
 
-        if prompt1 := st.chat_input(
-            "Send a message to CRS 1",
-            key="prompt_crs1",
-            disabled=not st.session_state["crs1_enabled"],
-        ):
-            # Display the user's message
-            messages_crs1.chat_message("user").write(prompt1)
-
-            # Add user's message to chat history
-            st.session_state["messages_1"].append(
-                {"role": "user", "message": prompt1}
-            )
-            # Get the CRS response
-            response_crs1 = messages_crs1.chat_message(
-                "assistant"
-            ).write_stream(get_crs_response(st.session_state["crs1"], prompt1))
-
-            # Add CRS response to chat history
-            st.session_state["messages_1"].append(
-                {"role": "assistant", "message": response_crs1}
-            )
-
-        crs1_frustrated_col, crs1_satisfied_col = st.columns(2)
-        crs1_frustrated_col.button(
-            ":rage: Frustrated",
-            use_container_width=True,
-            key="end_frustated_crs1",
-            on_click=end_conversation,
-            kwargs={
-                "crs": st.session_state["crs1"],
-                "sentiment": "frustrated",
-            },
-            disabled=not st.session_state["crs1_enabled"],
-        )
-        crs1_satisfied_col.button(
-            ":heavy_check_mark: Satisfied",
-            use_container_width=True,
-            key="end_satisfied_crs1",
-            on_click=end_conversation,
-            kwargs={
-                "crs": st.session_state["crs1"],
-                "sentiment": "satisfied",
-            },
-            disabled=not st.session_state["crs1_enabled"],
-        )
 
 # CRS 2
 with col_crs2:
-    with st.container(border=True):
-        st.write(":large_blue_circle: CRS 2")
-        # Display the chat history
-        messages_crs2 = st.container(height=350, border=False)
-        for message in st.session_state["messages_2"]:
-            messages_crs2.chat_message(message["role"]).write(
-                message["message"]
-            )
+    chat_col(2, "large_blue")
 
-        if prompt2 := st.chat_input(
-            "Send a message to CRS 2",
-            key="prompt_crs2",
-            disabled=not st.session_state["crs2_enabled"],
-        ):
-            # Display the user's message
-            messages_crs2.chat_message("user").write(prompt2)
-
-            # Add user's message to chat history
-            st.session_state["messages_2"].append(
-                {"role": "user", "message": prompt2}
-            )
-
-            # Get the CRS response
-            response_crs2 = messages_crs2.chat_message(
-                "assistant"
-            ).write_stream(get_crs_response(st.session_state["crs2"], prompt2))
-
-            # Add CRS response to chat history
-            st.session_state["messages_2"].append(
-                {"role": "assistant", "message": response_crs2}
-            )
-
-        crs2_frustrated_col, crs2_satisfied_col = st.columns(2)
-        crs2_frustrated_col.button(
-            ":rage: Frustrated",
-            use_container_width=True,
-            key="end_frustated_crs2",
-            on_click=end_conversation,
-            kwargs={
-                "crs": st.session_state["crs2"],
-                "sentiment": "frustrated",
-            },
-            disabled=not st.session_state["crs2_enabled"],
-        )
-        crs2_satisfied_col.button(
-            ":heavy_check_mark: Satisfied",
-            use_container_width=True,
-            key="end_satisfied_crs2",
-            on_click=end_conversation,
-            kwargs={
-                "crs": st.session_state["crs2"],
-                "sentiment": "satisfied",
-            },
-            disabled=not st.session_state["crs2_enabled"],
-        )
 
 # Feedback section
 container = st.container()
