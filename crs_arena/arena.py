@@ -373,9 +373,9 @@ container_col3.button(
 # Terms of service
 st.header("Terms of Service")
 st.write(
-    "By using this application, you agree to the following terms of service:\n"
-    "The service is a research platform. Please do not upload any private "
-    "information in the chat. The service collects the chat data and the user's"
-    " vote, which may be released under a Creative Commons Attribution (CC-BY) "
-    "or a similar license."
+    "By using this application, you agree to the following terms of service:  \n"
+    "The service is a research platform. It may produce offensive content. "
+    "Please do not upload any private information in the chat. The service "
+    "collects the chat data and the user's vote, which may be released under a "
+    "Creative Commons Attribution (CC-BY) or a similar license."
 )
