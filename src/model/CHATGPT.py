@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
@@ -287,6 +288,7 @@ class CHATGPT:
         Returns:
             Generated response and updated state.
         """
+        initial_conv_dict = deepcopy(conv_dict)
         conv_dict["context"].append(options[0])
         generated_inputs, generated_response = self.get_conv(conv_dict)
         options_letter = list(options[1].keys())
@@ -312,6 +314,7 @@ class CHATGPT:
             # response = (
             #     options[1].get(choice, {}).get("template", generated_response)
             # )
+            _, generated_response = self.get_conv(initial_conv_dict)
             response = generated_response
 
         # Update the state. Hack: penalize the choice to reduce the
