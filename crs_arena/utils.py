@@ -159,14 +159,28 @@ async def upload_feedback_to_gsheet(
     """
     logging.debug("Uploading feedback to Google Sheets.")
     try:
-        gs_connection = st.connection("gsheets", type=GSheetsConnection)
-        df = gs_connection.read(worksheet=worksheet)
-        if df[df["id"] == row["id"]].empty:
-            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-        else:
-            # Add feedback to existing row
-            df.loc[df["id"] == row["id"], "feedback"] = row["feedback"]
-        gs_connection.update(data=df, worksheet=worksheet)
-        logging.debug("Feedback uploaded to Google Sheets.")
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _upload_feedback_to_gsheet_sync(row, worksheet)
+        )
     except Exception as e:
         logging.error(f"Error uploading feedback to Google Sheets: {e}")
+
+
+def _upload_feedback_to_gsheet_sync(
+    row: Dict[str, str], worksheet: str
+) -> None:
+    """Uploads feedback to Google Sheets synchronously.
+
+    Args:
+        row: Row to upload to the worksheet.
+        worksheet: Name of the worksheet to upload the feedback to.
+    """
+    gs_connection = st.connection("gsheets", type=GSheetsConnection)
+    df = gs_connection.read(worksheet=worksheet)
+    if df[df["id"] == row["id"]].empty:
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    else:
+        # Add feedback to existing row
+        df.loc[df["id"] == row["id"], "feedback"] = row["feedback"]
+    gs_connection.update(data=df, worksheet=worksheet)
+    logging.debug("Feedback uploaded to Google Sheets.")
