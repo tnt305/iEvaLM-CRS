@@ -299,7 +299,7 @@ st.write(
 
 st.header(":page_with_curl: Rules")
 st.write(
-    "* Chat with each CRS (one after the other) to get movie recommendations "
+    "* Chat with each CRS (one after the other) to get **movie recommendations** "
     "up until you feel statisfied or frustrated.\n"
     "* Please be patient as some CRSs may take a few seconds to respond.\n"
     "* Try to send several messages to each CRS to get a better sense of their "
