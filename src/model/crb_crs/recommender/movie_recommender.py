@@ -537,7 +537,14 @@ class MovieRecommender(Recommender):
         Returns:
             Movie title.
         """
-        return self.movie_mentions_df.loc[[int(movie_id)]]["title"].iloc[0]
+        try:
+            title = self.movie_mentions_df.loc[[int(movie_id)]]["title"].iloc[
+                0
+            ]
+        except KeyError:
+            title = ""
+            logging.error(f"Movie title not found for movie ID {movie_id}.")
+        return title
 
     def replace_item_ids_with_recommendations(
         self,
