@@ -195,6 +195,7 @@ def get_options(dataset: str) -> Tuple[str, Dict[str, str]]:
                 "attribute": "writer",
                 "template": "Which writer do you like?",
             },
+            "E": {"attribute": "recommend", "template": ""},
         }
         return instructions, options
 
