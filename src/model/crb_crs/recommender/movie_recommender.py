@@ -534,16 +534,27 @@ class MovieRecommender(Recommender):
         Args:
             movie_id: Movie ID.
 
+        Raises:
+            KeyError: If the movie title is not found for the given movie ID.
+            Exception: If an error occurs when getting the movie title.
+
         Returns:
             Movie title.
         """
         try:
-            title = self.movie_mentions_df.loc[[int(movie_id)]]["title"].iloc[
-                0
-            ]
+            clean_movie_id = re.sub(r"\D", "", movie_id)
+            title = self.movie_mentions_df.loc[[int(clean_movie_id)]][
+                "title"
+            ].iloc[0]
         except KeyError:
             title = ""
             logging.error(f"Movie title not found for movie ID {movie_id}.")
+        except Exception as e:
+            title = ""
+            logging.error(
+                f"An error occurred when getting movie title for movie ID "
+                f"{movie_id}:\n{e}"
+            )
         return title
 
     def replace_item_ids_with_recommendations(
