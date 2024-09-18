@@ -4,7 +4,7 @@ import random
 import typing
 from argparse import ArgumentParser
 
-import openai
+from openai import OpenAI, InvalidRequestError, AuthenticationError, APITimeoutError
 from loguru import logger
 from tenacity import _utils, Retrying, retry_if_not_exception_type
 from tenacity.stop import stop_base
@@ -20,9 +20,9 @@ def my_before_sleep(retry_state):
 class my_wait_exponential(wait_base):
     def __init__(
         self,
-        multiplier: typing.Union[int, float] = 1,
+        multiplier: int | float = 1,
         max: _utils.time_unit_type = _utils.MAX_WAIT,  # noqa
-        exp_base: typing.Union[int, float] = 2,
+        exp_base: int | float = 2,
         min: _utils.time_unit_type = 0,  # noqa
     ) -> None:
         self.multiplier = multiplier
@@ -30,7 +30,7 @@ class my_wait_exponential(wait_base):
         self.max = _utils.to_seconds(max)
         self.exp_base = exp_base
 
-    def __call__(self, retry_state: "RetryCallState") -> float:
+    def __call__(self, retry_state: RetryCallState) -> float:
         if isinstance(retry_state.outcome, APITimeoutError):
             return 0
 
@@ -41,23 +41,18 @@ class my_wait_exponential(wait_base):
             return self.max
         return max(max(0, self.min), min(result, self.max))
 
-
 class my_stop_after_attempt(stop_base):
     """Stop when the previous attempt >= max_attempt."""
 
     def __init__(self, max_attempt_number: int) -> None:
         self.max_attempt_number = max_attempt_number
 
-    def __call__(self, retry_state: "RetryCallState") -> bool:
+    def __call__(self, retry_state: RetryCallState) -> bool:
         if isinstance(retry_state.outcome, APITimeoutError):
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
 
-
-client = OpenAI(api_key=args.api_key)
-
-# Update the retry logic
-def annotate(item_text_list):
+def annotate(client: OpenAI, item_text_list: list[str]):
     request_timeout = 6
     for attempt in Retrying(
         reraise=True,
@@ -68,7 +63,7 @@ def annotate(item_text_list):
     ):
         with attempt:
             response = client.embeddings.create(
-                model="text-embedding-ada-002",
+                model='text-embedding-ada-002',
                 input=item_text_list,
                 timeout=request_timeout,
             )
@@ -76,30 +71,24 @@ def annotate(item_text_list):
 
     return response
 
+def get_exist_item_set(save_dir: str) -> set[str]:
+    return {os.path.splitext(file)[0] for file in os.listdir(save_dir)}
 
-def get_exist_item_set():
-    exist_item_set = set()
-    for file in os.listdir(save_dir):
-        user_id = os.path.splitext(file)[0]
-        exist_item_set.add(user_id)
-    return exist_item_set
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("--api_key")
-    parser.add_argument("--batch_size", default=1, type=int)
-    parser.add_argument("--dataset", type=str, choices=["redial", "opendialkg"])
+    parser.add_argument('--api_key')
+    parser.add_argument('--batch_size', default=1, type=int)
+    parser.add_argument('--dataset', type=str, choices=['redial', 'opendialkg'])
     args = parser.parse_args()
 
-    openai.api_key = args.api_key
+    client = OpenAI(api_key=args.api_key)
     batch_size = args.batch_size
     dataset = args.dataset
 
-    save_dir = f"../save/embed/item/{dataset}"
+    save_dir = f'../save/embed/item/{dataset}'
     os.makedirs(save_dir, exist_ok=True)
 
-    with open(f"../data/{dataset}/id2info.json", encoding="utf-8") as f:
+    with open(f'../data/{dataset}/id2info.json', encoding='utf-8') as f:
         id2info = json.load(f)
 
     # redial
