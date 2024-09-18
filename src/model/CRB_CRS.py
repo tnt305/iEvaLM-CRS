@@ -14,6 +14,8 @@ import os
 import re
 from typing import Any, Dict, List, Tuple
 
+import nltk
+nltk.download('punkt_tab')
 from nltk.tokenize import word_tokenize
 
 from src.model.crb_crs.recommender import *
