@@ -31,7 +31,7 @@ class my_wait_exponential(wait_base):
         self.exp_base = exp_base
 
     def __call__(self, retry_state: "RetryCallState") -> float:
-        if retry_state.outcome == openai.error.Timeout:
+        if isinstance(retry_state.outcome, APITimeoutError):
             return 0
 
         try:
@@ -49,27 +49,28 @@ class my_stop_after_attempt(stop_base):
         self.max_attempt_number = max_attempt_number
 
     def __call__(self, retry_state: "RetryCallState") -> bool:
-        if retry_state.outcome == openai.error.Timeout:
+        if isinstance(retry_state.outcome, APITimeoutError):
             retry_state.attempt_number -= 1
         return retry_state.attempt_number >= self.max_attempt_number
 
 
+client = OpenAI(api_key=args.api_key)
+
+# Update the retry logic
 def annotate(item_text_list):
     request_timeout = 6
     for attempt in Retrying(
         reraise=True,
-        retry=retry_if_not_exception_type(
-            (openai.error.InvalidRequestError, openai.error.AuthenticationError)
-        ),
+        retry=retry_if_not_exception_type((InvalidRequestError, AuthenticationError)),
         wait=my_wait_exponential(min=1, max=60),
         stop=(my_stop_after_attempt(8)),
         before_sleep=my_before_sleep,
     ):
         with attempt:
-            response = openai.Embedding.create(
+            response = client.embeddings.create(
                 model="text-embedding-ada-002",
                 input=item_text_list,
-                request_timeout=request_timeout,
+                timeout=request_timeout,
             )
         request_timeout = min(30, request_timeout * 2)
 
